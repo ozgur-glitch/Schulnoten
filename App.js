@@ -430,10 +430,11 @@ export default function App() {
           )}
 
           <View style={styles.gridCardFull}>
+            {/* Kopfzeile mit korrigierter Zentrierung */}
             <View style={styles.gridRow}>
-              <View style={styles.gridHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>Std.</Text></View>
+              <View style={styles.gridSideHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>Std.</Text></View>
               {DAYS_SHORT.map(day => (
-                <View key={day} style={styles.gridHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>{day}</Text></View>
+                <View key={day} style={styles.gridDayHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>{day}</Text></View>
               ))}
             </View>
             <View style={{ flex: 1 }}>
@@ -587,7 +588,7 @@ export default function App() {
                   style={[styles.inputSingle, { flex: 1, marginBottom: 0 }]} 
                   placeholder="Note" 
                   value={gradeInput} 
-                  keyboardType="default" // Geändert von "numeric" zu "default" für Symbole (+/-)
+                  keyboardType="default" 
                   onChangeText={setGradeInput} 
                 />
                 <TextInput 
@@ -673,9 +674,41 @@ const styles = StyleSheet.create({
   gridCardFull: { flex: 1, backgroundColor: THEME.card, borderRadius: 15, overflow: 'hidden', elevation: 3, marginBottom: 10 },
   gridRowFull: { flex: 1, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  gridHeaderCellSmall: { flex: 1, paddingVertical: 6, backgroundColor: '#F8FAFC', alignItems: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9' },
-  gridHeaderTextSmall: { fontWeight: '800', color: THEME.secondary, fontSize: 11 },
-  gridSideCellSmall: { width: 35, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9' },
+  
+  // KOPFZEILE KORREKTUR
+  gridSideHeaderCellSmall: { 
+    width: 35, // Identisch zu gridSideCellSmall
+    paddingVertical: 6, 
+    backgroundColor: '#F8FAFC', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderRightWidth: 1, 
+    borderRightColor: '#F1F5F9' 
+  },
+  gridDayHeaderCellSmall: { 
+    flex: 1, // Identisch zu gridCellFull
+    paddingVertical: 6, 
+    backgroundColor: '#F8FAFC', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderRightWidth: 1, 
+    borderRightColor: '#F1F5F9' 
+  },
+  gridHeaderTextSmall: { 
+    fontWeight: '800', 
+    color: THEME.secondary, 
+    fontSize: 11,
+    textAlign: 'center'
+  },
+  
+  gridSideCellSmall: { 
+    width: 35, 
+    backgroundColor: '#F8FAFC', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    borderRightWidth: 1, 
+    borderRightColor: '#F1F5F9' 
+  },
   gridSideTextSmall: { fontWeight: '800', color: THEME.textSecondary, fontSize: 11 },
   gridCellFull: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9', padding: 1 },
   gridCellTextSmall: { fontSize: 10, fontWeight: '800', color: '#CBD5E1', textAlign: 'center' },

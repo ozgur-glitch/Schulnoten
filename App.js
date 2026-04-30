@@ -74,12 +74,12 @@ const getRawAverageForMonths = (gradesList, months) => {
   return sum / filtered.length;
 };
 
-const calculateTrends = (gradesList) => {
+const calculateTrends = (gradesList, fullLabel = false) => {
   const avg3 = getRawAverageForMonths(gradesList, 3);
   const avg6 = getRawAverageForMonths(gradesList, 6);
   const avg12 = getRawAverageForMonths(gradesList, 12);
 
-  const calcTrend = (newVal, oldVal, label) => {
+  const calcTrend = (newVal, oldVal, label, timeSpan) => {
     if (newVal === null) return null;
     let status = "Stabil";
     let color = THEME.warning;
@@ -88,22 +88,29 @@ const calculateTrends = (gradesList) => {
         if (diff < -0.1) { status = "Besser"; color = THEME.success; }
         else if (diff > 0.1) { status = "Schlechter"; color = THEME.danger; }
     }
-    const limit = Date.now() - (parseInt(label) * 30 * 24 * 60 * 60 * 1000);
+    const limit = Date.now() - (timeSpan * 30 * 24 * 60 * 60 * 1000);
     const relevantGrades = gradesList.filter(g => parseDate(g.date) >= limit);
     const symbol = getMostFrequentSymbol(relevantGrades);
     const numericPart = newVal.toFixed(1).replace('.', ',');
     return { label, text: status, color, val: numericPart, symbol: symbol };
   };
 
+  const l3 = fullLabel ? "3 Monate" : "3m";
+  const l6 = fullLabel ? "6 Monate" : "6m";
+  const l12 = fullLabel ? "12 Monate" : "12m";
+
   return [
-    calcTrend(avg3, avg6, "3m"),
-    calcTrend(avg6, avg12, "6m"),
-    calcTrend(avg12, null, "12m")
+    calcTrend(avg3, avg6, l3, 3),
+    calcTrend(avg6, avg12, l6, 6),
+    calcTrend(avg12, null, l12, 12)
   ].filter(t => t !== null);
 };
 
 export default function App() {
   const [grades, setGrades] = useState([]);
+  const [timetable, setTimetable] = useState({});
+  const [isLoaded, setIsLoaded] = useState(false); // Flag für Ladezustand
+
   const [activeTab, setActiveTab] = useState('notes'); 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -113,7 +120,6 @@ export default function App() {
   const [customSubjectColor, setCustomSubjectColor] = useState(COLOR_PALETTE[0]);
   const [dateInput, setDateInput] = useState(''); 
 
-  const [timetable, setTimetable] = useState({});
   const [hwModalVisible, setHwModalVisible] = useState(false);
   const [subjectModalVisible, setSubjectModalVisible] = useState(false);
   const [activeSlot, setActiveSlot] = useState(null); 
@@ -123,20 +129,32 @@ export default function App() {
   const [manualSubjectColor, setManualSubjectColor] = useState(COLOR_PALETTE[0]);
   const [importText, setImportText] = useState('');
 
+  // Initiales Laden
   useEffect(() => {
     const load = async () => {
-      const g = await AsyncStorage.getItem('grades_data');
-      const t = await AsyncStorage.getItem('tt_data');
-      if (g) setGrades(JSON.parse(g));
-      if (t) setTimetable(JSON.parse(t));
+      try {
+        const g = await AsyncStorage.getItem('grades_data');
+        const t = await AsyncStorage.getItem('tt_data');
+        if (g) setGrades(JSON.parse(g));
+        if (t) setTimetable(JSON.parse(t));
+      } catch (e) { console.log("Fehler beim Laden", e); }
+      setIsLoaded(true);
     };
     load();
   }, []);
 
+  // Speichern nur wenn Laden abgeschlossen ist
   useEffect(() => {
-    AsyncStorage.setItem('grades_data', JSON.stringify(grades));
-    AsyncStorage.setItem('tt_data', JSON.stringify(timetable));
-  }, [grades, timetable]);
+    if (isLoaded) {
+      AsyncStorage.setItem('grades_data', JSON.stringify(grades));
+    }
+  }, [grades, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      AsyncStorage.setItem('tt_data', JSON.stringify(timetable));
+    }
+  }, [timetable, isLoaded]);
 
   const handleExport = async () => {
     const data = JSON.stringify({ grades, timetable });
@@ -253,7 +271,7 @@ export default function App() {
         rawAvg: rawAvg, 
         symbol: getMostFrequentSymbol(stats[name].raw), 
         color: stats[name].color, 
-        trends: calculateTrends(stats[name].raw) 
+        trends: calculateTrends(stats[name].raw, false) 
       };
     }).sort((a, b) => a.rawAvg - b.rawAvg);
   };
@@ -313,10 +331,10 @@ export default function App() {
           <View style={styles.averageCard}>
             <Text style={styles.averageValue}>{grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}</Text>
             <View style={styles.trendRowFull}>
-              {calculateTrends(grades).map((t, idx) => (
+              {calculateTrends(grades, true).map((t, idx) => (
                 <View key={idx} style={[styles.trendBox, { backgroundColor: t.color }]}>
                   <Text style={styles.trendBoxValue}>{t.val}{t.symbol}</Text>
-                  <Text style={styles.trendBoxStatus}>{t.text}</Text>
+                  <Text style={styles.trendBoxStatus}>{t.label}</Text>
                 </View>
               ))}
             </View>
@@ -430,7 +448,6 @@ export default function App() {
           )}
 
           <View style={styles.gridCardFull}>
-            {/* Kopfzeile mit korrigierter Zentrierung */}
             <View style={styles.gridRow}>
               <View style={styles.gridSideHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>Std.</Text></View>
               {DAYS_SHORT.map(day => (
@@ -675,9 +692,8 @@ const styles = StyleSheet.create({
   gridRowFull: { flex: 1, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   
-  // KOPFZEILE KORREKTUR
   gridSideHeaderCellSmall: { 
-    width: 35, // Identisch zu gridSideCellSmall
+    width: 35, 
     paddingVertical: 6, 
     backgroundColor: '#F8FAFC', 
     alignItems: 'center', 
@@ -686,7 +702,7 @@ const styles = StyleSheet.create({
     borderRightColor: '#F1F5F9' 
   },
   gridDayHeaderCellSmall: { 
-    flex: 1, // Identisch zu gridCellFull
+    flex: 1, 
     paddingVertical: 6, 
     backgroundColor: '#F8FAFC', 
     alignItems: 'center', 
@@ -780,3 +796,4 @@ const styles = StyleSheet.create({
   gradeInputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 }
 });
+

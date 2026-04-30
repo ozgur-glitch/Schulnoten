@@ -26,19 +26,40 @@ const COLOR_PALETTE = [
   '#FF5252', '#FF9100', '#FDD835', '#43A047', '#00B8D4', '#2979FF', '#5C6BC0', '#AB47BC', '#F06292', '#455A64'
 ];
 
-const THEME = {
-  primary: '#2979FF',     
-  secondary: '#1C2E4A',   
-  background: '#F8FAFC',  
-  card: '#FFFFFF',
-  textMain: '#1E293B',
-  textSecondary: '#64748B',
-  white: '#FFFFFF',
-  success: '#00C853',
-  danger: '#FF1744',
-  warning: '#FFAB00',
-  accent: '#6366F1'
+const THEMES = {
+  light: {
+    primary: '#2979FF',     
+    secondary: '#1C2E4A',   
+    background: '#F8FAFC',  
+    card: '#FFFFFF',
+    textMain: '#1E293B',
+    textSecondary: '#64748B',
+    white: '#FFFFFF',
+    success: '#00C853',
+    danger: '#FF1744',
+    warning: '#FFAB00',
+    accent: '#6366F1',
+    input: '#F1F5F9',
+    border: '#F1F5F9'
+  },
+  dark: {
+    primary: '#3B82F6',     
+    secondary: '#0F172A',   
+    background: '#020617',  
+    card: '#1E293B',
+    textMain: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    white: '#FFFFFF',
+    success: '#10B981',
+    danger: '#EF4444',
+    warning: '#F59E0B',
+    accent: '#818CF8',
+    input: '#0F172A',
+    border: '#334155'
+  }
 };
+
+let THEME = THEMES.light;
 
 const DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
 const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -109,7 +130,10 @@ const calculateTrends = (gradesList, fullLabel = false) => {
 export default function App() {
   const [grades, setGrades] = useState([]);
   const [timetable, setTimetable] = useState({});
-  const [isLoaded, setIsLoaded] = useState(false); // Flag für Ladezustand
+  const [isLoaded, setIsLoaded] = useState(false); 
+  const [isDark, setIsDark] = useState(false);
+
+  THEME = isDark ? THEMES.dark : THEMES.light;
 
   const [activeTab, setActiveTab] = useState('notes'); 
   const [modalVisible, setModalVisible] = useState(false);
@@ -135,8 +159,10 @@ export default function App() {
       try {
         const g = await AsyncStorage.getItem('grades_data');
         const t = await AsyncStorage.getItem('tt_data');
+        const d = await AsyncStorage.getItem('dark_mode');
         if (g) setGrades(JSON.parse(g));
         if (t) setTimetable(JSON.parse(t));
+        if (d) setIsDark(JSON.parse(d));
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
@@ -155,6 +181,12 @@ export default function App() {
       AsyncStorage.setItem('tt_data', JSON.stringify(timetable));
     }
   }, [timetable, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      AsyncStorage.setItem('dark_mode', JSON.stringify(isDark));
+    }
+  }, [isDark, isLoaded]);
 
   const handleExport = async () => {
     const data = JSON.stringify({ grades, timetable });
@@ -273,7 +305,7 @@ export default function App() {
         color: stats[name].color, 
         trends: calculateTrends(stats[name].raw, false) 
       };
-    }).sort((a, b) => a.rawAvg - b.rawAvg);
+    }).sort((a, b) => a.name.localeCompare(b.name));
   };
 
   const getNextExamCountdown = () => {
@@ -306,10 +338,59 @@ export default function App() {
     { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
   ];
 
+  const dynamicStyles = StyleSheet.create({
+    container: { backgroundColor: THEME.background },
+    navHeaderFixed: { backgroundColor: THEME.secondary },
+    navTabText: { color: isDark ? '#94A3B8' : '#94A3B8' },
+    navTabTextActive: { color: THEME.white },
+    subHeader: { color: THEME.textSecondary },
+    linkCard: { backgroundColor: THEME.card },
+    linkIconContainer: { backgroundColor: isDark ? THEME.input : '#F1F5F9' },
+    linkTitle: { color: THEME.textMain },
+    linkDesc: { color: THEME.textSecondary },
+    arrowIcon: { color: THEME.primary },
+    examHeroBadgeValue: { color: THEME.danger },
+    examHeroBadgeLabel: { color: THEME.danger },
+    ttTitleCompact: { color: THEME.secondary },
+    gridCardFull: { backgroundColor: THEME.card },
+    gridRowFull: { borderBottomColor: THEME.border },
+    gridRow: { borderBottomColor: THEME.border },
+    gridSideHeaderCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
+    gridDayHeaderCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
+    gridHeaderTextSmall: { color: isDark ? THEME.textMain : THEME.secondary },
+    gridSideCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
+    gridSideTextSmall: { color: THEME.textSecondary },
+    gridCellFull: { borderRightColor: THEME.border },
+    modalContent: { backgroundColor: THEME.card },
+    modalIndicator: { backgroundColor: THEME.border },
+    modalTitle: { color: isDark ? THEME.textMain : THEME.secondary },
+    manualSubjectSection: { backgroundColor: THEME.input },
+    manualInput: { backgroundColor: THEME.card, color: THEME.textMain },
+    inputSingle: { backgroundColor: THEME.input, color: THEME.textMain },
+    sectionHeader: { color: isDark ? THEME.textMain : THEME.secondary },
+    averageCard: { backgroundColor: THEME.card },
+    averageValue: { color: THEME.primary },
+    subjectStatContainer: { backgroundColor: THEME.card },
+    subjectStatName: { color: THEME.textMain },
+    subjectStatAvgNumber: { color: THEME.textMain },
+    subjectStatSymbol: { color: THEME.textMain },
+    listTitle: { color: THEME.textMain },
+    gradeCard: { backgroundColor: THEME.card },
+    dateText: { color: THEME.textSecondary },
+    gradeContainer: { backgroundColor: THEME.input },
+    gradeValueText: { color: THEME.textMain },
+    compactLabel: { color: THEME.textSecondary },
+    chipSmall: { backgroundColor: THEME.input },
+    chipTextSmall: { color: THEME.textMain },
+    compactSectionCustom: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderColor: THEME.border },
+    manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
+    subjectText: { color: THEME.textMain }
+  });
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.navHeaderFixed}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
         {['notes', 'stats', 'timetable', 'pattern', 'backup'].map(tab => (
           <TouchableOpacity 
             key={tab} 
@@ -317,7 +398,7 @@ export default function App() {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={styles.navIcon}>{tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}</Text>
-            <Text style={[styles.navTabText, activeTab === tab && styles.navTabTextActive]} numberOfLines={1}>
+            <Text style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} numberOfLines={1}>
               {tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : 'Backup'}
             </Text>
           </TouchableOpacity>
@@ -327,9 +408,9 @@ export default function App() {
       {/* STATS TAB */}
       {activeTab === 'stats' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.statsScrollContent}>
-          <Text style={styles.sectionHeader}>Gesamt-Statistik</Text>
-          <View style={styles.averageCard}>
-            <Text style={styles.averageValue}>{grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Gesamt-Statistik</Text>
+          <View style={[styles.averageCard, dynamicStyles.averageCard]}>
+            <Text style={[styles.averageValue, dynamicStyles.averageValue]}>{grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}</Text>
             <View style={styles.trendRowFull}>
               {calculateTrends(grades, true).map((t, idx) => (
                 <View key={idx} style={[styles.trendBox, { backgroundColor: t.color }]}>
@@ -340,18 +421,18 @@ export default function App() {
             </View>
           </View>
 
-          <Text style={styles.sectionHeader}>Einzelne Fächer</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer</Text>
           {getSubjectStats().map((item, idx) => (
-            <View key={idx} style={styles.subjectStatContainer}>
+            <View key={idx} style={[styles.subjectStatContainer, dynamicStyles.subjectStatContainer]}>
               <View style={styles.subjectStatRow}>
                 <View style={styles.subjectLeftPart}>
                     <View style={[styles.subjectDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.subjectStatName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.subjectStatName, dynamicStyles.subjectStatName]} numberOfLines={1}>{item.name}</Text>
                 </View>
                 <View style={styles.subjectRightPart}>
-                    <Text style={styles.subjectStatAvgNumber}>{item.avg}</Text>
+                    <Text style={[styles.subjectStatAvgNumber, dynamicStyles.subjectStatAvgNumber]}>{item.avg}</Text>
                     <View style={styles.symbolPlaceholder}>
-                        <Text style={styles.subjectStatSymbol}>{item.symbol}</Text>
+                        <Text style={[styles.subjectStatSymbol, dynamicStyles.subjectStatSymbol]}>{item.symbol}</Text>
                     </View>
                 </View>
               </View>
@@ -376,37 +457,56 @@ export default function App() {
       {/* PATTERN TAB */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          <Text style={styles.sectionHeader}>Schul-Links</Text>
-          <Text style={styles.subHeader}>Alle wichtigen Portale auf einen Blick.</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Schul-Links</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen Blick.</Text>
           {musterLinks.map((link, idx) => (
-            <TouchableOpacity key={idx} style={styles.linkCard} onPress={() => Linking.openURL(link.url)} activeOpacity={0.7}>
-              <View style={styles.linkIconContainer}><Text style={{ fontSize: 24 }}>{link.icon}</Text></View>
+            <TouchableOpacity key={idx} style={[styles.linkCard, dynamicStyles.linkCard]} onPress={() => Linking.openURL(link.url)} activeOpacity={0.7}>
+              <View style={[styles.linkIconContainer, dynamicStyles.linkIconContainer]}><Text style={{ fontSize: 24 }}>{link.icon}</Text></View>
               <View style={styles.linkTextContainer}>
-                <Text style={styles.linkTitle}>{link.title}</Text>
-                <Text style={styles.linkDesc}>{link.desc}</Text>
+                <Text style={[styles.linkTitle, dynamicStyles.linkTitle]}>{link.title}</Text>
+                <Text style={[styles.linkDesc, dynamicStyles.linkDesc]}>{link.desc}</Text>
               </View>
-              <Text style={styles.arrowIcon}>→</Text>
+              <Text style={[styles.arrowIcon, dynamicStyles.arrowIcon]}>→</Text>
             </TouchableOpacity>
           ))}
+
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 30 }]}>👨‍💻 Über die App</Text>
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20 }]}>
+              Diese App wurde entwickelt von Özgür Cetin.{"\n"}
+              Ziel ist es, Schülern eine einfache und moderne Organisation ihrer Noten und ihres Stundenplans zu ermöglichen.{"\n"}
+              Kontakt: ozgur.cetin@web.de{"\n"}
+              © 2026
+            </Text>
+          </View>
         </ScrollView>
       )}
 
       {/* BACKUP TAB */}
       {activeTab === 'backup' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          <Text style={styles.sectionHeader}>Sicherung</Text>
-          <Text style={styles.subHeader}>Exportiere deine Daten oder stelle sie wieder her.</Text>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleExport}>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
+          <TouchableOpacity 
+            style={[styles.saveBtn, {marginBottom: 30, backgroundColor: isDark ? THEMES.light.primary : THEMES.dark.secondary}]} 
+            onPress={() => setIsDark(!isDark)}
+          >
+            <Text style={styles.saveBtnText}>{isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}</Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Sicherung</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Exportiere deine Daten oder stelle sie wieder her.</Text>
+          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.primary}]} onPress={handleExport}>
             <Text style={styles.saveBtnText}>Exportieren / Teilen</Text>
           </TouchableOpacity>
           <TextInput 
-            style={[styles.inputSingle, {marginTop: 25, height: 100, textAlignVertical: 'top'}]} 
+            style={[styles.inputSingle, dynamicStyles.inputSingle, {marginTop: 25, height: 100, textAlignVertical: 'top'}]} 
             multiline 
             placeholder="Code hier einfügen zum Importieren..." 
+            placeholderTextColor={THEME.textSecondary}
             value={importText} 
             onChangeText={setImportText} 
           />
-          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success}]} onPress={handleImport}>
+          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success, marginTop: 10}]} onPress={handleImport}>
             <Text style={styles.saveBtnText}>Importieren</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -417,13 +517,13 @@ export default function App() {
         <View style={styles.ttContainer}>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
             {getNextExamCountdown() && (
-              <View style={[styles.examHeroCard, { flex: 1, marginBottom: 0 }]}>
+              <View style={[styles.examHeroCard, { flex: 1, marginBottom: 0, backgroundColor: THEME.danger }]}>
                   <Text style={styles.examHeroTitle}>Nächste Arbeit</Text>
                   <View style={styles.examHeroContent}>
                       <Text style={styles.examHeroSubject} numberOfLines={1}>{getNextExamCountdown().name}</Text>
                       <View style={styles.examHeroBadge}>
-                          <Text style={styles.examHeroBadgeValue}>{getNextExamCountdown().days}</Text>
-                          <Text style={styles.examHeroBadgeLabel}>Tage</Text>
+                          <Text style={[styles.examHeroBadgeValue, dynamicStyles.examHeroBadgeValue]}>{getNextExamCountdown().days}</Text>
+                          <Text style={[styles.examHeroBadgeLabel, dynamicStyles.examHeroBadgeLabel]}>Tage</Text>
                       </View>
                   </View>
               </View>
@@ -444,26 +544,26 @@ export default function App() {
           </View>
 
           {!getNextExamCountdown() && !getHolidayCountdown() && (
-             <Text style={styles.ttTitleCompact}>Wochenplan</Text>
+             <Text style={[styles.ttTitleCompact, dynamicStyles.ttTitleCompact]}>Wochenplan</Text>
           )}
 
-          <View style={styles.gridCardFull}>
-            <View style={styles.gridRow}>
-              <View style={styles.gridSideHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>Std.</Text></View>
+          <View style={[styles.gridCardFull, dynamicStyles.gridCardFull]}>
+            <View style={[styles.gridRow, dynamicStyles.gridRow]}>
+              <View style={[styles.gridSideHeaderCellSmall, dynamicStyles.gridSideHeaderCellSmall]}><Text style={[styles.gridHeaderTextSmall, dynamicStyles.gridHeaderTextSmall]}>Std.</Text></View>
               {DAYS_SHORT.map(day => (
-                <View key={day} style={styles.gridDayHeaderCellSmall}><Text style={styles.gridHeaderTextSmall}>{day}</Text></View>
+                <View key={day} style={[styles.gridDayHeaderCellSmall, dynamicStyles.gridDayHeaderCellSmall]}><Text style={[styles.gridHeaderTextSmall, dynamicStyles.gridHeaderTextSmall]}>{day}</Text></View>
               ))}
             </View>
             <View style={{ flex: 1 }}>
               {HOURS.map(hour => (
-                <View key={hour} style={styles.gridRowFull}>
-                  <View style={styles.gridSideCellSmall}><Text style={styles.gridSideTextSmall}>{hour}.</Text></View>
+                <View key={hour} style={[styles.gridRowFull, dynamicStyles.gridRowFull]}>
+                  <View style={[styles.gridSideCellSmall, dynamicStyles.gridSideCellSmall]}><Text style={[styles.gridSideTextSmall, dynamicStyles.gridSideTextSmall]}>{hour}.</Text></View>
                   {DAYS_SHORT.map((day, dIdx) => {
                     const subjectData = timetable[`${dIdx}-${hour}`];
                     return (
                       <TouchableOpacity 
                         key={dIdx} 
-                        style={[styles.gridCellFull, subjectData && { backgroundColor: subjectData.color }]}
+                        style={[styles.gridCellFull, dynamicStyles.gridCellFull, subjectData && { backgroundColor: subjectData.color }]}
                         onPress={() => handleShortPress(dIdx, hour)}
                         onLongPress={() => handleLongPress(dIdx, hour)}
                         delayLongPress={300}
@@ -489,17 +589,17 @@ export default function App() {
       {activeTab === 'notes' && (
         <View style={{ flex: 1 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Deine Noten</Text>
-            <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}><Text style={styles.addButtonText}>+</Text></TouchableOpacity>
+            <Text style={[styles.listTitle, dynamicStyles.listTitle]}>Deine Noten</Text>
+            <TouchableOpacity style={[styles.addButton, {backgroundColor: THEME.primary}]} onPress={() => setModalVisible(true)}><Text style={styles.addButtonText}>+</Text></TouchableOpacity>
           </View>
           <FlatList data={[...grades].sort((a,b) => parseDate(b.date) - parseDate(a.date))} keyExtractor={(item) => item.id} contentContainerStyle={styles.listContent} renderItem={({ item }) => (
-            <View style={styles.gradeCard}>
+            <View style={[styles.gradeCard, dynamicStyles.gradeCard]}>
               <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
               <TouchableOpacity style={{ flex: 1 }} onPress={() => { setEditingId(item.id); setGradeInput(item.displayGrade); setDateInput(item.date); setModalVisible(true); }}>
-                <Text style={styles.subjectText}>{item.subject}</Text>
-                <Text style={styles.dateText}>{item.date}</Text> 
+                <Text style={[styles.subjectText, dynamicStyles.subjectText]}>{item.subject}</Text>
+                <Text style={[styles.dateText, dynamicStyles.dateText]}>{item.date}</Text> 
               </TouchableOpacity>
-              <View style={styles.gradeContainer}><Text style={styles.gradeValueText}>{item.displayGrade}</Text></View>
+              <View style={[styles.gradeContainer, dynamicStyles.gradeContainer]}><Text style={[styles.gradeValueText, dynamicStyles.gradeValueText]}>{item.displayGrade}</Text></View>
             </View>
           )} />
         </View>
@@ -508,33 +608,34 @@ export default function App() {
       {/* MODALS */}
       <Modal animationType="fade" transparent={true} visible={hwModalVisible}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: 30 }]}>
-            <View style={styles.modalIndicator} />
-            <Text style={styles.modalTitle}>Aufgaben & Termine</Text>
+          <View style={[styles.modalContent, dynamicStyles.modalContent, { paddingBottom: 30 }]}>
+            <View style={[styles.modalIndicator, dynamicStyles.modalIndicator]} />
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Aufgaben & Termine</Text>
             <View style={styles.inputRow}>
-              <TextInput style={[styles.inputSingle, {flex: 1, marginBottom: 0}]} placeholder="Hausaufgabe..." value={hwInput} onChangeText={setHwInput} />
+              <TextInput style={[styles.inputSingle, dynamicStyles.inputSingle, {flex: 1, marginBottom: 0}]} placeholder="Hausaufgabe..." placeholderTextColor={THEME.textSecondary} value={hwInput} onChangeText={setHwInput} />
               <TouchableOpacity onPress={() => setHwInput('')} style={styles.deleteIconBtn}><Text>🗑️</Text></TouchableOpacity>
             </View>
             <View style={[styles.inputRow, {marginTop: 15}]}>
               <TextInput 
-                style={[styles.inputSingle, {flex: 1, marginBottom: 0}]} 
+                style={[styles.inputSingle, dynamicStyles.inputSingle, {flex: 1, marginBottom: 0}]} 
                 placeholder="Datum der Arbeit..." 
+                placeholderTextColor={THEME.textSecondary}
                 value={examDateInput} 
                 onChangeText={t => setExamDateInput(formatInputDate(t))} 
               />
               <TouchableOpacity onPress={() => setExamDateInput('')} style={styles.deleteIconBtn}><Text>🗑️</Text></TouchableOpacity>
             </View>
-            <TouchableOpacity style={[styles.saveBtn, {marginTop: 25}]} onPress={saveHwData}><Text style={styles.saveBtnText}>Speichern</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setHwModalVisible(false)}><Text>Schließen</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.saveBtn, {marginTop: 25, backgroundColor: THEME.primary}]} onPress={saveHwData}><Text style={styles.saveBtnText}>Speichern</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setHwModalVisible(false)}><Text style={{color: THEME.textSecondary}}>Schließen</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
 
       <Modal animationType="slide" transparent={true} visible={subjectModalVisible}>
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <View style={styles.modalIndicator} />
-            <Text style={styles.modalTitle}>Fach auswählen</Text>
+          <ScrollView contentContainerStyle={[styles.modalContent, dynamicStyles.modalContent]}>
+            <View style={[styles.modalIndicator, dynamicStyles.modalIndicator]} />
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Fach auswählen</Text>
             <TouchableOpacity 
                 style={[styles.chip, { backgroundColor: THEME.danger, width: '100%', alignItems: 'center', justifyContent: 'center' }]} 
                 onPress={() => saveSubjectData(null, null)}
@@ -542,50 +643,51 @@ export default function App() {
                 <Text style={{ color: '#fff', fontWeight: '800', textAlign: 'center' }}>Slot leeren</Text>
             </TouchableOpacity>
             <View style={styles.chipContainer}>
-              {Object.keys(PREDEFINED_SUBJECTS).map(s => (
+              {Object.keys(PREDEFINED_SUBJECTS).sort((a, b) => a.localeCompare(b)).map(s => (
                 <TouchableOpacity key={s} style={[styles.chip, { backgroundColor: PREDEFINED_SUBJECTS[s] }]} onPress={() => saveSubjectData(s, PREDEFINED_SUBJECTS[s])}><Text style={{ color: '#fff', fontWeight: '800' }}>{s}</Text></TouchableOpacity>
               ))}
             </View>
-            <View style={styles.manualSubjectSection}>
-              <TextInput style={styles.manualInput} placeholder="Eigenes Fach..." value={manualSubjectName} onChangeText={setManualSubjectName} />
+            <View style={[styles.manualSubjectSection, dynamicStyles.manualSubjectSection]}>
+              <TextInput style={[styles.manualInput, dynamicStyles.manualInput]} placeholder="Eigenes Fach..." placeholderTextColor={THEME.textSecondary} value={manualSubjectName} onChangeText={setManualSubjectName} />
               <View style={styles.paletteContainer}>
                 {COLOR_PALETTE.map(c => (
                   <TouchableOpacity key={c} style={[styles.colorDot, { backgroundColor: c }, manualSubjectColor === c && {borderWidth: 3, borderColor: '#fff'}]} onPress={() => setManualSubjectColor(c)} />
                 ))}
               </View>
-              <TouchableOpacity style={[styles.saveBtn, {marginTop: 10}]} onPress={() => manualSubjectName && saveSubjectData(manualSubjectName, manualSubjectColor)}><Text style={styles.saveBtnText}>+ Hinzufügen</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.saveBtn, {marginTop: 10, backgroundColor: THEME.primary}]} onPress={() => manualSubjectName && saveSubjectData(manualSubjectName, manualSubjectColor)}><Text style={styles.saveBtnText}>+ Hinzufügen</Text></TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setSubjectModalVisible(false)}><Text>Abbrechen</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setSubjectModalVisible(false)}><Text style={{color: THEME.textSecondary}}>Abbrechen</Text></TouchableOpacity>
           </ScrollView>
         </View>
       </Modal>
 
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalIndicator} />
-            <Text style={styles.modalTitle}>{editingId ? 'Note bearbeiten' : 'Note hinzufügen'}</Text>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <View style={[styles.modalIndicator, dynamicStyles.modalIndicator]} />
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingId ? 'Note bearbeiten' : 'Note hinzufügen'}</Text>
             
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.compactSection}>
-                <Text style={styles.compactLabel}>Fach wählen:</Text>
+                <Text style={[styles.compactLabel, dynamicStyles.compactLabel]}>Fach wählen:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
-                  {Object.keys(PREDEFINED_SUBJECTS).map(s => (
+                  {Object.keys(PREDEFINED_SUBJECTS).sort((a, b) => a.localeCompare(b)).map(s => (
                     <TouchableOpacity 
                       key={s} 
                       onPress={() => {setSelectedSubject(s); setCustomSubject('');}} 
-                      style={[styles.chipSmall, selectedSubject === s && !customSubject && { backgroundColor: PREDEFINED_SUBJECTS[s] }]}
+                      style={[styles.chipSmall, dynamicStyles.chipSmall, selectedSubject === s && !customSubject && { backgroundColor: PREDEFINED_SUBJECTS[s] }]}
                     >
-                      <Text style={[styles.chipTextSmall, (selectedSubject === s && !customSubject) && { color: '#fff' }]}>{s}</Text>
+                      <Text style={[styles.chipTextSmall, dynamicStyles.chipTextSmall, (selectedSubject === s && !customSubject) && { color: '#fff' }]}>{s}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
 
-              <View style={styles.compactSectionCustom}>
+              <View style={[styles.compactSectionCustom, dynamicStyles.compactSectionCustom]}>
                 <TextInput 
-                  style={styles.manualInputCompact} 
+                  style={[styles.manualInputCompact, dynamicStyles.manualInputCompact]} 
                   placeholder="Oder eigenes Fach..." 
+                  placeholderTextColor={THEME.textSecondary}
                   value={customSubject} 
                   onChangeText={setCustomSubject} 
                 />
@@ -602,15 +704,17 @@ export default function App() {
 
               <View style={styles.gradeInputRow}>
                 <TextInput 
-                  style={[styles.inputSingle, { flex: 1, marginBottom: 0 }]} 
+                  style={[styles.inputSingle, dynamicStyles.inputSingle, { flex: 1, marginBottom: 0 }]} 
                   placeholder="Note" 
+                  placeholderTextColor={THEME.textSecondary}
                   value={gradeInput} 
                   keyboardType="default" 
                   onChangeText={setGradeInput} 
                 />
                 <TextInput 
-                  style={[styles.inputSingle, { flex: 1.5, marginBottom: 0 }]} 
+                  style={[styles.inputSingle, dynamicStyles.inputSingle, { flex: 1.5, marginBottom: 0 }]} 
                   placeholder="Datum" 
+                  placeholderTextColor={THEME.textSecondary}
                   value={dateInput} 
                   onChangeText={t => setDateInput(formatInputDate(t))} 
                 />
@@ -622,7 +726,7 @@ export default function App() {
                     <Text style={styles.saveBtnText}>Löschen</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={[styles.saveBtn, { flex: 2 }]} onPress={saveGrade}>
+                <TouchableOpacity style={[styles.saveBtn, { flex: 2, backgroundColor: THEME.primary }]} onPress={saveGrade}>
                   <Text style={styles.saveBtnText}>Speichern</Text>
                 </TouchableOpacity>
               </View>
@@ -639,10 +743,9 @@ export default function App() {
 } 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.background },
+  container: { flex: 1 },
   tabContent: { flex: 1 },
   navHeaderFixed: { 
-    backgroundColor: THEME.secondary, 
     flexDirection: 'row', 
     justifyContent: 'space-evenly', 
     paddingVertical: 10, 
@@ -658,20 +761,16 @@ const styles = StyleSheet.create({
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   navIcon: { fontSize: 18, marginBottom: 4, textAlign: 'center' },
-  navTabText: { color: '#94A3B8', fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  navTabTextActive: { color: THEME.white },
-  
-  subHeader: { color: THEME.textSecondary, marginBottom: 25, fontSize: 14 },
-  linkCard: { backgroundColor: THEME.card, borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
-  linkIconContainer: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  navTabText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  subHeader: { marginBottom: 25, fontSize: 14 },
+  linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
+  linkIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   linkTextContainer: { flex: 1 },
-  linkTitle: { fontSize: 16, fontWeight: '800', color: THEME.textMain, marginBottom: 2 },
-  linkDesc: { fontSize: 12, color: THEME.textSecondary },
-  arrowIcon: { fontSize: 18, color: THEME.primary, fontWeight: 'bold' },
-  
+  linkTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  linkDesc: { fontSize: 12 },
+  arrowIcon: { fontSize: 18, fontWeight: 'bold' },
   ttContainer: { flex: 1, paddingHorizontal: 12, paddingVertical: 10 },
   examHeroCard: { 
-    backgroundColor: THEME.danger, 
     borderRadius: 18, 
     padding: 12, 
     elevation: 3,
@@ -684,112 +783,99 @@ const styles = StyleSheet.create({
   examHeroContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   examHeroSubject: { color: '#fff', fontSize: 16, fontWeight: '900', flex: 1 },
   examHeroBadge: { backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, alignItems: 'center', minWidth: 45 },
-  examHeroBadgeValue: { color: THEME.danger, fontSize: 16, fontWeight: '900' },
-  examHeroBadgeLabel: { color: THEME.danger, fontSize: 8, fontWeight: '700', marginTop: -2 },
-
-  ttTitleCompact: { fontSize: 20, fontWeight: '900', color: THEME.secondary, marginBottom: 10, textAlign: 'center' },
-  gridCardFull: { flex: 1, backgroundColor: THEME.card, borderRadius: 15, overflow: 'hidden', elevation: 3, marginBottom: 10 },
-  gridRowFull: { flex: 1, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  gridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  
+  examHeroBadgeValue: { fontSize: 16, fontWeight: '900' },
+  examHeroBadgeLabel: { fontSize: 8, fontWeight: '700', marginTop: -2 },
+  ttTitleCompact: { fontSize: 20, fontWeight: '900', marginBottom: 10, textAlign: 'center' },
+  gridCardFull: { flex: 1, borderRadius: 15, overflow: 'hidden', elevation: 3, marginBottom: 10 },
+  gridRowFull: { flex: 1, flexDirection: 'row', borderBottomWidth: 1 },
+  gridRow: { flexDirection: 'row', borderBottomWidth: 1 },
   gridSideHeaderCellSmall: { 
     width: 35, 
     paddingVertical: 6, 
-    backgroundColor: '#F8FAFC', 
     alignItems: 'center', 
     justifyContent: 'center',
-    borderRightWidth: 1, 
-    borderRightColor: '#F1F5F9' 
+    borderRightWidth: 1 
   },
   gridDayHeaderCellSmall: { 
     flex: 1, 
     paddingVertical: 6, 
-    backgroundColor: '#F8FAFC', 
     alignItems: 'center', 
     justifyContent: 'center',
-    borderRightWidth: 1, 
-    borderRightColor: '#F1F5F9' 
+    borderRightWidth: 1 
   },
   gridHeaderTextSmall: { 
     fontWeight: '800', 
-    color: THEME.secondary, 
     fontSize: 11,
     textAlign: 'center'
   },
-  
   gridSideCellSmall: { 
     width: 35, 
-    backgroundColor: '#F8FAFC', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    borderRightWidth: 1, 
-    borderRightColor: '#F1F5F9' 
+    borderRightWidth: 1 
   },
-  gridSideTextSmall: { fontWeight: '800', color: THEME.textSecondary, fontSize: 11 },
-  gridCellFull: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9', padding: 1 },
+  gridSideTextSmall: { fontWeight: '800', fontSize: 11 },
+  gridCellFull: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, padding: 1 },
   gridCellTextSmall: { fontSize: 10, fontWeight: '800', color: '#CBD5E1', textAlign: 'center' },
   iconIndicatorRowSmall: { flexDirection: 'row', gap: 2, marginTop: 2 },
   miniIconSmall: { fontSize: 11 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '85%' },
-  modalIndicator: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
-  modalTitle: { fontSize: 18, fontWeight: '900', marginBottom: 15, textAlign: 'center', color: THEME.secondary },
+  modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '85%' },
+  modalIndicator: { width: 40, height: 5, borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
+  modalTitle: { fontSize: 18, fontWeight: '900', marginBottom: 15, textAlign: 'center' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   deleteIconBtn: { padding: 12, backgroundColor: '#FEE2E2', borderRadius: 12 },
-  manualSubjectSection: { padding: 15, backgroundColor: '#F1F5F9', borderRadius: 20, marginTop: 10 },
-  manualInput: { backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 15, fontWeight: '600' },
+  manualSubjectSection: { padding: 15, borderRadius: 20, marginTop: 10 },
+  manualInput: { padding: 12, borderRadius: 12, marginBottom: 15, fontWeight: '600' },
   paletteContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   colorDot: { width: 28, height: 28, borderRadius: 14 },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginVertical: 15 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginBottom: 4 },
-  chipText: { fontWeight: '600', fontSize: 12 },
-  inputSingle: { backgroundColor: '#F1F5F9', padding: 15, borderRadius: 12, marginBottom: 10 },
-  saveBtn: { backgroundColor: THEME.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
+  inputSingle: { padding: 15, borderRadius: 12, marginBottom: 10 },
+  saveBtn: { padding: 15, borderRadius: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '800' },
   cancelBtn: { padding: 15, alignItems: 'center' },
   statsScrollContent: { padding: 20 },
-  sectionHeader: { fontSize: 20, fontWeight: '800', color: THEME.secondary, marginBottom: 15 },
-  averageCard: { backgroundColor: THEME.card, padding: 20, borderRadius: 25, alignItems: 'center', marginBottom: 20 },
-  averageValue: { fontSize: 50, fontWeight: '900', color: THEME.primary },
+  sectionHeader: { fontSize: 20, fontWeight: '800', marginBottom: 15 },
+  averageCard: { padding: 20, borderRadius: 25, alignItems: 'center', marginBottom: 20 },
+  averageValue: { fontSize: 50, fontWeight: '900' },
   trendRowFull: { flexDirection: 'row', gap: 10, marginTop: 15 },
   trendBox: { padding: 10, borderRadius: 12, alignItems: 'center', flex: 1 },
   trendBoxValue: { color: '#fff', fontWeight: '800' },
   trendBoxStatus: { color: '#fff', fontSize: 9 },
-  subjectStatContainer: { backgroundColor: '#fff', padding: 15, borderRadius: 15, marginBottom: 10 },
+  subjectStatContainer: { padding: 15, borderRadius: 15, marginBottom: 10 },
   subjectStatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subjectLeftPart: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
   subjectRightPart: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: 90 },
   subjectDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  subjectStatName: { fontSize: 16, fontWeight: '700', color: THEME.textMain },
-  subjectStatAvgNumber: { fontSize: 18, fontWeight: '900', textAlign: 'right', color: THEME.textMain }, 
+  subjectStatName: { fontSize: 16, fontWeight: '700' },
+  subjectStatAvgNumber: { fontSize: 18, fontWeight: '900', textAlign: 'right' }, 
   symbolPlaceholder: { width: 15, marginLeft: 2 }, 
-  subjectStatSymbol: { fontSize: 18, fontWeight: '900', color: THEME.textMain },
+  subjectStatSymbol: { fontSize: 18, fontWeight: '900' },
   subjectTrendRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   miniTrendBox: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, minWidth: 65 },
   miniTrendContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
   miniTrendLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
   miniTrendVal: { color: '#fff', fontSize: 11, fontWeight: '800' },
   miniSymbolPlaceholder: { width: 10, marginLeft: 1 },
-  miniTrendText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 },
   listTitle: { fontSize: 22, fontWeight: '800' },
-  addButton: { backgroundColor: THEME.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   addButtonText: { color: '#fff', fontSize: 24 },
   listContent: { padding: 20 },
-  gradeCard: { backgroundColor: '#fff', padding: 15, borderRadius: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  gradeCard: { padding: 15, borderRadius: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   colorIndicator: { width: 4, height: '100%', marginRight: 15, borderRadius: 2 },
   subjectText: { fontSize: 16, fontWeight: '700' },
-  dateText: { fontSize: 12, color: THEME.textSecondary },
-  gradeContainer: { backgroundColor: '#F1F5F9', padding: 10, borderRadius: 10 },
+  dateText: { fontSize: 12 },
+  gradeContainer: { padding: 10, borderRadius: 10 },
   gradeValueText: { fontWeight: '800' },
-
   compactSection: { marginBottom: 12 },
-  compactLabel: { fontSize: 12, fontWeight: '700', color: THEME.textSecondary, marginBottom: 8, marginLeft: 5 },
+  compactLabel: { fontSize: 12, fontWeight: '700', marginBottom: 8, marginLeft: 5 },
   horizontalChips: { paddingBottom: 5 },
-  chipSmall: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 8, backgroundColor: '#F1F5F9' },
-  chipTextSmall: { fontSize: 13, fontWeight: '700', color: THEME.textMain },
-  compactSectionCustom: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 15, marginBottom: 15, borderStyle: 'dashed', borderWidth: 1, borderColor: '#E2E8F0' },
-  manualInputCompact: { backgroundColor: '#fff', padding: 10, borderRadius: 10, fontSize: 14, fontWeight: '600', marginBottom: 10 },
+  chipSmall: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 8 },
+  chipTextSmall: { fontSize: 13, fontWeight: '700' },
+  compactSectionCustom: { padding: 12, borderRadius: 15, marginBottom: 15, borderStyle: 'dashed', borderWidth: 1 },
+  manualInputCompact: { padding: 10, borderRadius: 10, fontSize: 14, fontWeight: '600', marginBottom: 10 },
   paletteContainerCompact: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 5 },
   colorDotSmall: { width: 22, height: 22, borderRadius: 11 },
   colorDotActive: { borderWidth: 2, borderColor: '#fff', scaleX: 1.2, scaleY: 1.2 },

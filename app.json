@@ -2,9 +2,10 @@
   "expo": {
     "name": "Schulnoten",
     "slug": "schulnoten",
+    "owner": "oc2003",
     "extra": {
       "eas": {
-        "projectId": "77d4b218-c48d-4125-a1e7-49530efd8e4e"
+        "projectId": "c9118aea-7c42-4e11-a250-b6948cfef86d"
       }
     },
     "version": "1.0.0",

@@ -380,14 +380,12 @@ export default function App() {
     }).sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  // HOLT DIE NÄCHSTEN BIS ZU 3 ARBEITEN (MIT DYNAMISCHER FACHFARBE)
   const getNextExams = () => {
     const exams = [];
     Object.values(timetable).forEach(slot => {
       if (slot.examDate) {
         const time = parseDate(slot.examDate);
         if (time >= new Date().setHours(0,0,0,0)) {
-          // Holt die Farbe aus PREDEFINED_SUBJECTS oder nutzt die hinterlegte Slot-Farbe / Fallback
           const subjectColor = PREDEFINED_SUBJECTS[slot.name] || slot.color || THEME.danger;
           exams.push({ name: slot.name, time, date: slot.examDate, color: subjectColor });
         }
@@ -395,7 +393,6 @@ export default function App() {
     });
     if (exams.length === 0) return [];
     
-    // Nach Datum sortieren und die ersten 3 zurückgeben
     const sortedExams = exams.sort((a, b) => a.time - b.time).slice(0, 3);
     
     return sortedExams.map(exam => {
@@ -540,10 +537,9 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* PATTERN TAB (Muster mit Live-Vertretungsplan) */}
+      {/* PATTERN TAB */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 5, marginBottom: 15 }}>
             <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginBottom: 0, flex: 1, minWidth: 180 }]}>Aktuelle Vertretungen (5b):</Text>
             <TouchableOpacity onPress={fetchVPlanData} style={{ backgroundColor: THEME.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignSelf: 'center' }}>
@@ -551,7 +547,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Ergebnisanzeige für Vertretungen */}
           {vPlanLoading ? (
             <ActivityIndicator size="small" color={THEME.primary} style={{ marginVertical: 15 }} />
           ) : vPlanEntries.length === 0 ? (
@@ -586,7 +581,6 @@ export default function App() {
             </TouchableOpacity>
           ))}
 
-          {/* Bereinigte Entwickler-Info */}
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 30 }]}>👨‍💻 Entwickler-Info</Text>
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start' }]}>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 22, color: THEME.textMain, fontSize: 13 }]}>
@@ -600,7 +594,7 @@ export default function App() {
       {/* BACKUP TAB */}
       {activeTab === 'backup' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          <Text style={[styles.sectionHeader, dynamicHeader => styles.sectionHeader]}>Erscheinungsbild</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
           <TouchableOpacity 
             style={[styles.saveBtn, {marginBottom: 30, backgroundColor: isDark ? THEMES.light.primary : THEMES.dark.secondary}]} 
             onPress={() => setIsDark(!isDark)}
@@ -631,7 +625,6 @@ export default function App() {
       {activeTab === 'timetable' && (
         <View style={styles.ttContainer}>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
-            {/* ZEIGT DIE NÄCHSTEN 3 ARBEITEN AN MIT DYNAMISCHER FACHFARBE */}
             {nextExamsList.length > 0 && (
               <View style={{ flex: 1.5, gap: 6 }}>
                 {nextExamsList.map((exam, idx) => (
@@ -1005,3 +998,4 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
   vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 }
 });
+

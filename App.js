@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Text, View, StyleSheet, ScrollView, TouchableOpacity, 
-  TextInput, Modal, SafeAreaView, FlatList, StatusBar, Dimensions, Linking, Share, Alert
+  TextInput, Modal, SafeAreaView, FlatList, StatusBar, Dimensions, Linking, Share, Alert,
+  ActivityIndicator
 } from 'react-native'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
@@ -135,7 +136,7 @@ export default function App() {
 
   THEME = isDark ? THEMES.dark : THEMES.light;
 
-  const [activeTab, setActiveTab] = useState('notes'); 
+  const [activeTab, setActiveTab] = useState('pattern'); 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathe');
@@ -153,6 +154,10 @@ export default function App() {
   const [manualSubjectColor, setManualSubjectColor] = useState(COLOR_PALETTE[0]);
   const [importText, setImportText] = useState('');
 
+  const [vPlanLoading, setVPlanLoading] = useState(false);
+  const [vPlanEntries, setVPlanEntries] = useState([]);
+  const [vPlanDiagnostics, setVPlanDiagnostics] = useState({ length: 0, textFound: 'NEIN', flexibleDetection: 'NEIN' });
+
   // Initiales Laden
   useEffect(() => {
     const load = async () => {
@@ -167,6 +172,11 @@ export default function App() {
       setIsLoaded(true);
     };
     load();
+  }, []);
+
+  // Automatischer Datenabruf beim Start der App
+  useEffect(() => {
+    fetchVPlanData();
   }, []);
 
   // Speichern nur wenn Laden abgeschlossen ist
@@ -187,6 +197,68 @@ export default function App() {
       AsyncStorage.setItem('dark_mode', JSON.stringify(isDark));
     }
   }, [isDark, isLoaded]);
+
+  const fetchVPlanData = async () => {
+    setVPlanLoading(true);
+    try {
+      const response = await fetch('https://www.musterschule.de/UNTIS/Vertretungsplan/show.php?plan=H_Schueler_heute', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      const htmlText = await response.text();
+      
+      const entries = [];
+      let flexibleFound = false;
+
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      let rowMatch;
+
+      while ((rowMatch = rowRegex.exec(htmlText)) !== null) {
+        const rowContent = rowMatch[1];
+        const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        let cellMatch;
+        const cells = [];
+
+        while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+          const cleanCell = cellMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+          cells.push(cleanCell);
+        }
+
+        if (cells.length >= 4) {
+          const rowData = {
+            klasse: cells[0] || '',
+            stunde: cells[1] || '',
+            lehrer: cells[2] || '',
+            fach: cells[3] || '',
+            vertreter: cells[4] || '---',
+            vFach: cells[5] || '---',
+            raum: cells[6] || '---',
+            notiz: cells[7] || ''
+          };
+
+          const classLower = rowData.klasse.toLowerCase();
+          if (classLower.includes('5b') || classLower.includes('5abcd')) {
+            flexibleFound = true;
+            entries.push(rowData);
+          }
+        }
+      }
+
+      setVPlanEntries(entries);
+      setVPlanDiagnostics({
+        length: htmlText.length,
+        textFound: htmlText.toLowerCase().includes('5b') ? 'JA' : 'NEIN',
+        flexibleDetection: flexibleFound ? 'JA' : 'NEIN'
+      });
+    } catch (err) {
+      console.log("VPlan Fetch Fehler: ", err.message);
+    } finally {
+      setVPlanLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     const data = JSON.stringify({ grades, timetable });
@@ -308,20 +380,28 @@ export default function App() {
     }).sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  const getNextExamCountdown = () => {
+  // HOLT DIE NÄCHSTEN BIS ZU 3 ARBEITEN (MIT DYNAMISCHER FACHFARBE)
+  const getNextExams = () => {
     const exams = [];
     Object.values(timetable).forEach(slot => {
       if (slot.examDate) {
         const time = parseDate(slot.examDate);
         if (time >= new Date().setHours(0,0,0,0)) {
-          exams.push({ name: slot.name, time, date: slot.examDate });
+          // Holt die Farbe aus PREDEFINED_SUBJECTS oder nutzt die hinterlegte Slot-Farbe / Fallback
+          const subjectColor = PREDEFINED_SUBJECTS[slot.name] || slot.color || THEME.danger;
+          exams.push({ name: slot.name, time, date: slot.examDate, color: subjectColor });
         }
       }
     });
-    if (exams.length === 0) return null;
-    const next = exams.sort((a,b) => a.time - b.time)[0];
-    const diffDays = Math.ceil((next.time - Date.now()) / (1000 * 60 * 60 * 24));
-    return { name: next.name, days: diffDays, date: next.date };
+    if (exams.length === 0) return [];
+    
+    // Nach Datum sortieren und die ersten 3 zurückgeben
+    const sortedExams = exams.sort((a, b) => a.time - b.time).slice(0, 3);
+    
+    return sortedExams.map(exam => {
+      const diffDays = Math.ceil((exam.time - Date.now()) / (1000 * 60 * 60 * 24));
+      return { name: exam.name, days: diffDays, date: exam.date, color: exam.color };
+    });
   };
 
   const getHolidayCountdown = () => {
@@ -332,16 +412,16 @@ export default function App() {
   };
 
   const musterLinks = [
-    { title: 'Vertretungsplan', desc: 'Aktuelle Ausfälle & Änderungen', url: 'https://www.musterschule.de/UNTIS/Vertretungsplan/show.php?plan=H_Schueler_heute', icon: '📋' },
     { title: 'Schulportal Hessen', desc: 'Anmeldung, Login', url: 'https://login.schulportal.hessen.de/?url=aHR0cHM6Ly9jb25uZWN0LnNjaHVscG9ydGFsLmhlc3Nlbi5kZS8=&skin=sp&i=5115', icon: '🔐' },
     { title: 'Infos Musterschule', desc: 'Allgemeine Schulnachrichten', url: 'https://infos.musterschule.de/', icon: '📰' },
     { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
+    { title: 'Kapiert.de', desc: 'Das dreistufige Lernportal', url: 'https://www.kapiert.de/', icon: '💡' },
   ];
 
   const dynamicStyles = StyleSheet.create({
     container: { backgroundColor: THEME.background },
     navHeaderFixed: { backgroundColor: THEME.secondary },
-    navTabText: { color: isDark ? '#94A3B8' : '#94A3B8' },
+    navTabText: { color: '#94A3B8' },
     navTabTextActive: { color: THEME.white },
     subHeader: { color: THEME.textSecondary },
     linkCard: { backgroundColor: THEME.card },
@@ -384,8 +464,11 @@ export default function App() {
     chipTextSmall: { color: THEME.textMain },
     compactSectionCustom: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderColor: THEME.border },
     manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
-    subjectText: { color: THEME.textMain }
+    subjectText: { color: THEME.textMain },
+    vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border }
   });
+
+  const nextExamsList = getNextExams();
 
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
@@ -398,7 +481,12 @@ export default function App() {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={styles.navIcon}>{tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}</Text>
-            <Text style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} numberOfLines={1}>
+            <Text 
+              style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} 
+              numberOfLines={1} 
+              adjustsFontSizeToFit 
+              minimumFontScale={0.85}
+            >
               {tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : 'Backup'}
             </Text>
           </TouchableOpacity>
@@ -410,6 +498,7 @@ export default function App() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.statsScrollContent}>
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Gesamt-Statistik</Text>
           <View style={[styles.averageCard, dynamicStyles.averageCard]}>
+            <Text style={[styles.averageLabel]}>Notendurchschnitt</Text>
             <Text style={[styles.averageValue, dynamicStyles.averageValue]}>{grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}</Text>
             <View style={styles.trendRowFull}>
               {calculateTrends(grades, true).map((t, idx) => (
@@ -440,11 +529,8 @@ export default function App() {
                 {item.trends.map((t, tIdx) => (
                     <View key={tIdx} style={[styles.miniTrendBox, { backgroundColor: t.color }]}>
                         <View style={styles.miniTrendContent}>
-                          <Text style={styles.miniTrendLabel}>{t.label}: </Text>
-                          <Text style={styles.miniTrendVal}>{t.val}</Text>
-                          <View style={styles.miniSymbolPlaceholder}>
-                             <Text style={styles.miniTrendVal}>{t.symbol}</Text>
-                          </View>
+                          <Text style={styles.miniTrendLabel}>{t.label}</Text>
+                          <Text style={styles.miniTrendVal}>{t.val}{t.symbol}</Text>
                         </View>
                     </View>
                 ))}
@@ -454,10 +540,40 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* PATTERN TAB */}
+      {/* PATTERN TAB (Muster mit Live-Vertretungsplan) */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Schul-Links</Text>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 5, marginBottom: 15 }}>
+            <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginBottom: 0, flex: 1, minWidth: 180 }]}>Aktuelle Vertretungen (5b):</Text>
+            <TouchableOpacity onPress={fetchVPlanData} style={{ backgroundColor: THEME.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignSelf: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>🔄 Aktualisieren</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Ergebnisanzeige für Vertretungen */}
+          {vPlanLoading ? (
+            <ActivityIndicator size="small" color={THEME.primary} style={{ marginVertical: 15 }} />
+          ) : vPlanEntries.length === 0 ? (
+            <Text style={[styles.subHeader, dynamicStyles.subHeader, { fontStyle: 'italic', marginBottom: 20 }]}>Keine aktuellen Änderungen oder Ausfälle für die Klasse 5b gelistet.</Text>
+          ) : (
+            vPlanEntries.map((item, index) => (
+              <View key={index} style={[styles.vPlanCard, dynamicStyles.vPlanCard]}>
+                <Text style={{ color: THEME.textMain, fontWeight: '700', fontSize: 14 }}>
+                  Klasse: {item.klasse} | Std: {item.stunde} | Lehrer: {item.lehrer}
+                </Text>
+                <Text style={{ color: THEME.textSecondary, fontSize: 13, marginTop: 3 }}>
+                  Fach: {item.fach} {item.vertreter !== '---' && `➔ Vertreter: ${item.vertreter}`}
+                </Text>
+                {item.raum !== '---' && <Text style={{ color: THEME.textSecondary, fontSize: 12, fontStyle: 'italic', marginTop: 2 }}>Raum: {item.raum}</Text>}
+                {item.notiz !== '' && item.notiz !== '&nbsp;' && item.notiz.trim() !== '' && (
+                  <Text style={{ color: THEME.danger, fontSize: 12, fontWeight: '600', marginTop: 2 }}>Info: {item.notiz}</Text>
+                )}
+              </View>
+            ))
+          )}
+
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 15 }]}>Schul-Links</Text>
           <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen Blick.</Text>
           {musterLinks.map((link, idx) => (
             <TouchableOpacity key={idx} style={[styles.linkCard, dynamicStyles.linkCard]} onPress={() => Linking.openURL(link.url)} activeOpacity={0.7}>
@@ -470,13 +586,12 @@ export default function App() {
             </TouchableOpacity>
           ))}
 
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 30 }]}>👨‍💻 Über die App</Text>
+          {/* Bereinigte Entwickler-Info */}
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 30 }]}>👨‍💻 Entwickler-Info</Text>
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20 }]}>
-              Diese App wurde entwickelt von Özgür Cetin.{"\n"}
-              Ziel ist es, Schülern eine einfache und moderne Organisation ihrer Noten und ihres Stundenplans zu ermöglichen.{"\n"}
-              Kontakt: ozgur.cetin@web.de{"\n"}
-              © 2026
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 22, color: THEME.textMain, fontSize: 13 }]}>
+              <Text style={{ fontWeight: '700' }}>Entwickler:</Text> Özgür Cetin{"\n"}
+              <Text style={{ fontWeight: '700' }}>E-Mail:</Text> ozgur.cetin@web.de
             </Text>
           </View>
         </ScrollView>
@@ -485,7 +600,7 @@ export default function App() {
       {/* BACKUP TAB */}
       {activeTab === 'backup' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
+          <Text style={[styles.sectionHeader, dynamicHeader => styles.sectionHeader]}>Erscheinungsbild</Text>
           <TouchableOpacity 
             style={[styles.saveBtn, {marginBottom: 30, backgroundColor: isDark ? THEMES.light.primary : THEMES.dark.secondary}]} 
             onPress={() => setIsDark(!isDark)}
@@ -516,21 +631,26 @@ export default function App() {
       {activeTab === 'timetable' && (
         <View style={styles.ttContainer}>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
-            {getNextExamCountdown() && (
-              <View style={[styles.examHeroCard, { flex: 1, marginBottom: 0, backgroundColor: THEME.danger }]}>
-                  <Text style={styles.examHeroTitle}>Nächste Arbeit</Text>
-                  <View style={styles.examHeroContent}>
-                      <Text style={styles.examHeroSubject} numberOfLines={1}>{getNextExamCountdown().name}</Text>
-                      <View style={styles.examHeroBadge}>
-                          <Text style={[styles.examHeroBadgeValue, dynamicStyles.examHeroBadgeValue]}>{getNextExamCountdown().days}</Text>
-                          <Text style={[styles.examHeroBadgeLabel, dynamicStyles.examHeroBadgeLabel]}>Tage</Text>
+            {/* ZEIGT DIE NÄCHSTEN 3 ARBEITEN AN MIT DYNAMISCHER FACHFARBE */}
+            {nextExamsList.length > 0 && (
+              <View style={{ flex: 1.5, gap: 6 }}>
+                {nextExamsList.map((exam, idx) => (
+                  <View key={idx} style={[styles.examHeroCard, { backgroundColor: exam.color, padding: 8 }]}>
+                      <Text style={[styles.examHeroTitle, { color: 'rgba(255,255,255,0.9)', marginBottom: 2 }]}>{idx === 0 ? 'Nächste Arbeit' : `Arbeit ${idx + 1}`}</Text>
+                      <View style={styles.examHeroContent}>
+                          <Text style={[styles.examHeroSubject, { fontSize: 14 }]} numberOfLines={1}>{exam.name}</Text>
+                          <View style={[styles.examHeroBadge, { minWidth: 40, paddingVertical: 2 }]}>
+                              <Text style={[styles.examHeroBadgeValue, { color: exam.color, fontSize: 13 }]}>{exam.days}</Text>
+                              <Text style={[styles.examHeroBadgeLabel, { color: exam.color, fontSize: 7 }]}>Tage</Text>
+                          </View>
                       </View>
                   </View>
+                ))}
               </View>
             )}
             
             {getHolidayCountdown() && (
-              <View style={[styles.examHeroCard, { flex: 1, marginBottom: 0, backgroundColor: THEME.success }]}>
+              <View style={[styles.examHeroCard, { flex: 1, marginBottom: 0, backgroundColor: THEME.success, justifyContent: 'center' }]}>
                   <Text style={styles.examHeroTitle}>Ferien-Countdown</Text>
                   <View style={styles.examHeroContent}>
                       <Text style={styles.examHeroSubject} numberOfLines={1}>Ferien</Text>
@@ -543,7 +663,7 @@ export default function App() {
             )}
           </View>
 
-          {!getNextExamCountdown() && !getHolidayCountdown() && (
+          {nextExamsList.length === 0 && !getHolidayCountdown() && (
              <Text style={[styles.ttTitleCompact, dynamicStyles.ttTitleCompact]}>Wochenplan</Text>
           )}
 
@@ -747,21 +867,23 @@ const styles = StyleSheet.create({
   tabContent: { flex: 1 },
   navHeaderFixed: { 
     flexDirection: 'row', 
-    justifyContent: 'space-evenly', 
+    justifyContent: 'space-between', 
     paddingVertical: 10, 
-    paddingHorizontal: 5 
+    paddingHorizontal: 4
   },
   navTabFixed: { 
     alignItems: 'center', 
     justifyContent: 'center', 
     paddingVertical: 8, 
+    paddingHorizontal: 2,
     borderRadius: 12, 
-    flex: 1, 
-    marginHorizontal: 2 
+    flexDirection: 'column',
+    flexShrink: 0,
+    width: `${100 / 5}%`
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   navIcon: { fontSize: 18, marginBottom: 4, textAlign: 'center' },
-  navTabText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  navTabText: { fontSize: 11, fontWeight: '700', textAlign: 'center', width: '100%' },
   subHeader: { marginBottom: 25, fontSize: 14 },
   linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
   linkIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
@@ -837,27 +959,27 @@ const styles = StyleSheet.create({
   cancelBtn: { padding: 15, alignItems: 'center' },
   statsScrollContent: { padding: 20 },
   sectionHeader: { fontSize: 20, fontWeight: '800', marginBottom: 15 },
-  averageCard: { padding: 20, borderRadius: 25, alignItems: 'center', marginBottom: 20 },
-  averageValue: { fontSize: 50, fontWeight: '900' },
-  trendRowFull: { flexDirection: 'row', gap: 10, marginTop: 15 },
-  trendBox: { padding: 10, borderRadius: 12, alignItems: 'center', flex: 1 },
-  trendBoxValue: { color: '#fff', fontWeight: '800' },
-  trendBoxStatus: { color: '#fff', fontSize: 9 },
-  subjectStatContainer: { padding: 15, borderRadius: 15, marginBottom: 10 },
+  averageCard: { padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 25, elevation: 1 },
+  averageLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', color: '#64748B', letterSpacing: 1, marginBottom: 4 },
+  averageValue: { fontSize: 46, fontWeight: '900' },
+  trendRowFull: { flexDirection: 'row', gap: 10, marginTop: 15, width: '100%' },
+  trendBox: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center', flex: 1 },
+  trendBoxValue: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  trendBoxStatus: { color: '#fff', fontSize: 10, opacity: 0.9, marginTop: 2, fontWeight: '600' },
+  subjectStatContainer: { padding: 16, borderRadius: 16, marginBottom: 12, elevation: 1 },
   subjectStatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subjectLeftPart: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
   subjectRightPart: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: 90 },
-  subjectDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  subjectDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   subjectStatName: { fontSize: 16, fontWeight: '700' },
-  subjectStatAvgNumber: { fontSize: 18, fontWeight: '900', textAlign: 'right' }, 
+  subjectStatAvgNumber: { fontSize: 20, fontWeight: '900', textAlign: 'right' }, 
   symbolPlaceholder: { width: 15, marginLeft: 2 }, 
   subjectStatSymbol: { fontSize: 18, fontWeight: '900' },
-  subjectTrendRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  miniTrendBox: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, minWidth: 65 },
-  miniTrendContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
-  miniTrendLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  subjectTrendRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  miniTrendBox: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, minWidth: 60, opacity: 0.9 },
+  miniTrendContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  miniTrendLabel: { color: '#fff', fontSize: 11, fontWeight: '700', opacity: 0.8 },
   miniTrendVal: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  miniSymbolPlaceholder: { width: 10, marginLeft: 1 },
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 },
   listTitle: { fontSize: 22, fontWeight: '800' },
   addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
@@ -880,6 +1002,6 @@ const styles = StyleSheet.create({
   colorDotSmall: { width: 22, height: 22, borderRadius: 11 },
   colorDotActive: { borderWidth: 2, borderColor: '#fff', scaleX: 1.2, scaleY: 1.2 },
   gradeInputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 }
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
+  vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 }
 });
-

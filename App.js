@@ -67,12 +67,13 @@ const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 // --- Hilfsfunktionen ---
 const getPureNumber = (gradeStr) => {
+  if (!gradeStr) return 0;
   const num = parseFloat(gradeStr.toString().replace(',', '.'));
   return isNaN(num) ? 0 : num;
 }; 
 
 const getMostFrequentSymbol = (gradesList) => {
-  if (gradesList.length === 0) return "";
+  if (!gradesList || gradesList.length === 0) return "";
   let counts = { plus: 0, minus: 0 };
   gradesList.forEach(g => {
     if (g.displayGrade?.includes('+')) counts.plus++;
@@ -97,6 +98,7 @@ const getRawAverageForMonths = (gradesList, months) => {
 };
 
 const calculateTrends = (gradesList, fullLabel = false) => {
+  if (!gradesList || gradesList.length === 0) return [];
   const avg3 = getRawAverageForMonths(gradesList, 3);
   const avg6 = getRawAverageForMonths(gradesList, 6);
   const avg12 = getRawAverageForMonths(gradesList, 12);
@@ -133,6 +135,7 @@ export default function App() {
   const [timetable, setTimetable] = useState({});
   const [isLoaded, setIsLoaded] = useState(false); 
   const [isDark, setIsDark] = useState(false);
+  const [selectedClass, setSelectedClass] = useState('5b');
 
   THEME = isDark ? THEMES.dark : THEMES.light;
 
@@ -165,19 +168,23 @@ export default function App() {
         const g = await AsyncStorage.getItem('grades_data');
         const t = await AsyncStorage.getItem('tt_data');
         const d = await AsyncStorage.getItem('dark_mode');
+        const c = await AsyncStorage.getItem('selected_class');
         if (g) setGrades(JSON.parse(g));
         if (t) setTimetable(JSON.parse(t));
         if (d) setIsDark(JSON.parse(d));
+        if (c) setSelectedClass(c);
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
     load();
   }, []);
 
-  // Automatischer Datenabruf beim Start der App
+  // Automatischer Datenabruf bei Start oder Klassenwechsel
   useEffect(() => {
-    fetchVPlanData();
-  }, []);
+    if (isLoaded) {
+      fetchVPlanData();
+    }
+  }, [selectedClass, isLoaded]);
 
   // Speichern nur wenn Laden abgeschlossen ist
   useEffect(() => {
@@ -198,6 +205,12 @@ export default function App() {
     }
   }, [isDark, isLoaded]);
 
+  useEffect(() => {
+    if (isLoaded) {
+      AsyncStorage.setItem('selected_class', selectedClass);
+    }
+  }, [selectedClass, isLoaded]);
+
   const fetchVPlanData = async () => {
     setVPlanLoading(true);
     try {
@@ -215,6 +228,8 @@ export default function App() {
 
       const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
       let rowMatch;
+
+      const targetClassLower = selectedClass.trim().toLowerCase();
 
       while ((rowMatch = rowRegex.exec(htmlText)) !== null) {
         const rowContent = rowMatch[1];
@@ -240,7 +255,7 @@ export default function App() {
           };
 
           const classLower = rowData.klasse.toLowerCase();
-          if (classLower.includes('5b') || classLower.includes('5abcd')) {
+          if (targetClassLower && (classLower.includes(targetClassLower) || classLower.includes(targetClassLower.replace(/\s+/g, '')))) {
             flexibleFound = true;
             entries.push(rowData);
           }
@@ -250,7 +265,7 @@ export default function App() {
       setVPlanEntries(entries);
       setVPlanDiagnostics({
         length: htmlText.length,
-        textFound: htmlText.toLowerCase().includes('5b') ? 'JA' : 'NEIN',
+        textFound: htmlText.toLowerCase().includes(targetClassLower) ? 'JA' : 'NEIN',
         flexibleDetection: flexibleFound ? 'JA' : 'NEIN'
       });
     } catch (err) {
@@ -307,8 +322,11 @@ export default function App() {
             text: "Löschen", 
             style: "destructive", 
             onPress: () => {
-              setGrades(grades.filter(g => g.id !== editingId));
+              const currentEditingId = editingId;
               closeModal();
+              setTimeout(() => {
+                setGrades(prevGrades => prevGrades.filter(g => g.id !== currentEditingId));
+              }, 100);
             } 
           }
         ]
@@ -362,13 +380,14 @@ export default function App() {
   const getSubjectStats = () => {
     const stats = {};
     grades.forEach(g => {
-      if (!stats[g.subject]) stats[g.subject] = { sum: 0, count: 0, color: g.color, raw: [] };
+      if (!g || !g.subject) return;
+      if (!stats[g.subject]) stats[g.subject] = { sum: 0, count: 0, color: g.color || '#78909C', raw: [] };
       stats[g.subject].sum += getPureNumber(g.displayGrade);
       stats[g.subject].count += 1;
       stats[g.subject].raw.push(g);
     });
     return Object.keys(stats).map(name => {
-      const rawAvg = stats[name].sum / stats[name].count;
+      const rawAvg = stats[name].count > 0 ? stats[name].sum / stats[name].count : 0;
       return { 
         name, 
         avg: rawAvg.toFixed(1).replace('.', ','), 
@@ -383,7 +402,7 @@ export default function App() {
   const getNextExams = () => {
     const exams = [];
     Object.values(timetable).forEach(slot => {
-      if (slot.examDate) {
+      if (slot && slot.examDate) {
         const time = parseDate(slot.examDate);
         if (time >= new Date().setHours(0,0,0,0)) {
           const subjectColor = PREDEFINED_SUBJECTS[slot.name] || slot.color || THEME.danger;
@@ -408,11 +427,12 @@ export default function App() {
     return days > 0 ? days : null;
   };
 
+  // Tausch von Kapiert.de (jetzt Index 2) und Bärenstark Schule (jetzt Index 3) vollzogen
   const musterLinks = [
     { title: 'Schulportal Hessen', desc: 'Anmeldung, Login', url: 'https://login.schulportal.hessen.de/?url=aHR0cHM6Ly9jb25uZWN0LnNjaHVscG9ydGFsLmhlc3Nlbi5kZS8=&skin=sp&i=5115', icon: '🔐' },
     { title: 'Infos Musterschule', desc: 'Allgemeine Schulnachrichten', url: 'https://infos.musterschule.de/', icon: '📰' },
-    { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
     { title: 'Kapiert.de', desc: 'Das dreistufige Lernportal', url: 'https://www.kapiert.de/', icon: '💡' },
+    { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
   ];
 
   const dynamicStyles = StyleSheet.create({
@@ -523,7 +543,7 @@ export default function App() {
                 </View>
               </View>
               <View style={styles.subjectTrendRow}>
-                {item.trends.map((t, tIdx) => (
+                {item.trends && item.trends.map((t, tIdx) => (
                     <View key={tIdx} style={[styles.miniTrendBox, { backgroundColor: t.color }]}>
                         <View style={styles.miniTrendContent}>
                           <Text style={styles.miniTrendLabel}>{t.label}</Text>
@@ -540,8 +560,23 @@ export default function App() {
       {/* PATTERN TAB */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
+          
+          {/* Dynamische Klassenauswahl */}
+          <View style={{ backgroundColor: THEME.input, borderRadius: 14, padding: 12, marginBottom: 20 }}>
+            <Text style={{ color: THEME.textSecondary, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginBottom: 5 }}>Klasse für Vertretungsplan:</Text>
+            <TextInput 
+              style={{ backgroundColor: THEME.card, color: THEME.textMain, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, fontWeight: '700', fontSize: 15 }}
+              value={selectedClass}
+              placeholder="z.B. 5b, 6a..."
+              placeholderTextColor={THEME.textSecondary}
+              onChangeText={setSelectedClass}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 5, marginBottom: 15 }}>
-            <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginBottom: 0, flex: 1, minWidth: 180 }]}>Aktuelle Vertretungen (5b):</Text>
+            <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginBottom: 0, flex: 1, minWidth: 180 }]}>Aktuelle Vertretungen ({selectedClass}):</Text>
             <TouchableOpacity onPress={fetchVPlanData} style={{ backgroundColor: THEME.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignSelf: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>🔄 Aktualisieren</Text>
             </TouchableOpacity>
@@ -550,7 +585,7 @@ export default function App() {
           {vPlanLoading ? (
             <ActivityIndicator size="small" color={THEME.primary} style={{ marginVertical: 15 }} />
           ) : vPlanEntries.length === 0 ? (
-            <Text style={[styles.subHeader, dynamicStyles.subHeader, { fontStyle: 'italic', marginBottom: 20 }]}>Keine aktuellen Änderungen oder Ausfälle für die Klasse 5b gelistet.</Text>
+            <Text style={[styles.subHeader, dynamicStyles.subHeader, { fontStyle: 'italic', marginBottom: 20 }]}>Keine aktuellen Änderungen oder Ausfälle für die Klasse {selectedClass} gelistet.</Text>
           ) : (
             vPlanEntries.map((item, index) => (
               <View key={index} style={[styles.vPlanCard, dynamicStyles.vPlanCard]}>
@@ -569,7 +604,7 @@ export default function App() {
           )}
 
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 15 }]}>Schul-Links</Text>
-          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen Blick.</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen glance.</Text>
           {musterLinks.map((link, idx) => (
             <TouchableOpacity key={idx} style={[styles.linkCard, dynamicStyles.linkCard]} onPress={() => Linking.openURL(link.url)} activeOpacity={0.7}>
               <View style={[styles.linkIconContainer, dynamicStyles.linkIconContainer]}><Text style={{ fontSize: 24 }}>{link.icon}</Text></View>
@@ -998,4 +1033,3 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
   vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 }
 });
-

@@ -1,12 +1,238 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { 
   Text, View, StyleSheet, ScrollView, TouchableOpacity, 
   TextInput, Modal, SafeAreaView, FlatList, StatusBar, Dimensions, Linking, Share, Alert,
-  ActivityIndicator
+  ActivityIndicator, RefreshControl
 } from 'react-native'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// --- DATEN FÜR NACHRICHTEN & TERMINE ---
+const INITIAL_NEWS = [
+  {
+    id: 'n1',
+    type: 'news',
+    title: 'Herzliche Grüße aus Japan! 🇯🇵',
+    date: '5. Oktober 2026',
+    author: 'Webmaster',
+    summary: 'Wir erleben hier in Japan unvergessliche Tage mit vielen spannenden Eindrücken, herzlichen Begegnungen und beeindruckender Gastfreundschaft.',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
+    id: 'n2',
+    type: 'news',
+    title: 'Lauf für mehr Zeit 2026',
+    date: '24. September 2026',
+    author: 'Frauke Lode',
+    summary: 'Ein Jahr der Rekorde: Benjamin Seitzinger läuft auf den 3. Platz (17:03 Min). Die Musterschulgemeinde gewinnt den Preis für das größte Schulteam!',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
+    id: 'n3',
+    type: 'news',
+    title: '🍂 Projektunterrichtstage',
+    date: '19. September 2026',
+    author: 'Kristin Voigt',
+    summary: 'In der letzten Woche vor den Herbstferien finden traditionell unsere Projektunterrichtstage (PUT) statt.',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
+    id: 'n4',
+    type: 'news',
+    title: 'Forschung trifft Zukunft: Automechanika 2026',
+    date: '16. September 2026',
+    author: 'Webmaster',
+    summary: 'Für den Wahlunterricht Naturwissenschaften des 10. Jahrgangs ging es am 9. September 2026 auf das Frankfurter Messegelände.',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
+    id: 'n5',
+    type: 'news',
+    title: 'WerWillDerKann am 22. September',
+    date: '8. September 2026',
+    author: 'Julian Teufel',
+    summary: 'Einladung zur Veranstaltung WerWillDerKann für die gesamte Schulgemeinde.',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
+    id: 'n6',
+    type: 'news',
+    title: 'Jahrbuch 2025/26 wieder erhältlich!',
+    date: '2. September 2026',
+    author: 'Webmaster',
+    summary: 'Da die erste Auflage innerhalb einer Woche vergriffen war, haben wir noch einmal nachproduziert!',
+    link: 'https://infos.musterschule.de/'
+  }
+];
+
+const INITIAL_EVENTS = [
+  {
+    id: 'e1',
+    type: 'event',
+    title: 'Elternabend (EA) 6d',
+    date: '2. November 2026',
+    endDate: '2026-11-02',
+    author: '19:00 - 20:30 Uhr',
+    summary: 'Klassenelternabend für die Klasse 6d.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e2',
+    type: 'event',
+    title: 'Kammermusikabend',
+    date: '3. November 2026',
+    endDate: '2026-11-03',
+    author: '19:00 - 21:00 Uhr',
+    summary: 'Kammermusikabend der Musterschule in der Aula.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e3',
+    type: 'event',
+    title: 'Pädagogischer Tag',
+    date: '9. November 2026',
+    endDate: '2026-11-09',
+    author: 'Ganztägig',
+    summary: 'Pädagogischer Tag für das Kollegium.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e4',
+    type: 'event',
+    title: 'Berufsinformationstag BIT',
+    date: '14. November 2026',
+    endDate: '2026-11-14',
+    author: '10:00 - 13:00 Uhr',
+    summary: 'Berufsinformationstag für Schülerinnen und Schüler der E-Phase.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e5',
+    type: 'event',
+    title: 'Solistenpodium',
+    date: '18. November 2026',
+    endDate: '2026-11-18',
+    author: '19:30 - 21:30 Uhr',
+    summary: 'Solistenpodium der Fachschaft Musik.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e6',
+    type: 'event',
+    title: 'Musikalischer Nachmittag für Grundschüler',
+    date: '10. Dezember 2026',
+    endDate: '2026-12-10',
+    author: '15:00 - 17:00 Uhr',
+    summary: 'Musikalisches Angebot und Instrumentenvorstellung für interessierte Grundschülerinnen und Grundschüler.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e7',
+    type: 'event',
+    title: 'Schnuppernachmittag Französisch',
+    date: '21. Dezember 2026',
+    endDate: '2026-12-21',
+    author: '16:00 - 18:00 Uhr',
+    summary: 'Schnuppernachmittag Französisch in der Aula.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e8',
+    type: 'event',
+    title: 'Weihnachtsferien',
+    date: '23. Dez. 2026 – 12. Jan. 2027',
+    endDate: '2027-01-12',
+    author: 'Schulferien',
+    summary: 'Erholsame Weihnachtsferien für die gesamte Schulgemeinde.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e9',
+    type: 'event',
+    title: 'Tag der offenen Tür',
+    date: '16. Januar 2027',
+    endDate: '2027-01-16',
+    author: '09:00 - 12:30 Uhr',
+    summary: 'Einblicke in die Musterschule für zukünftige Schülerinnen, Schüler und Eltern.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e10',
+    type: 'event',
+    title: 'Musikarbeitstage in Rothenfels',
+    date: 'Bis 22. Januar 2027',
+    endDate: '2027-01-22',
+    author: 'Mehrtägig',
+    summary: 'Proben- und Musikarbeitstage der Ensembles auf Burg Rothenfels.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e11',
+    type: 'event',
+    title: 'Januarkonzerte',
+    date: 'Bis 28. Januar 2027',
+    endDate: '2027-01-28',
+    author: 'Abendveranstaltungen',
+    summary: 'Traditionelle Januarkonzerte der Musterschule.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e12',
+    type: 'event',
+    title: 'Oberstufenskifahrt Q1/2',
+    date: '29. Jan. 2027 – 02. Feb. 2027',
+    endDate: '2027-02-02',
+    author: '12:00 - 20:00 Uhr',
+    summary: 'Oberstufenskifahrt für den Jahrgang Q1/Q2.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e13',
+    type: 'event',
+    title: 'Musikinstrumente einfach ausprobieren',
+    date: '17. Februar 2027',
+    endDate: '2027-02-17',
+    author: '15:00 - 16:30 Uhr',
+    summary: 'Schnuppertag zum Ausprobieren verschiedener Musikinstrumente.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e14',
+    type: 'event',
+    title: 'DELF schriftliche Prüfung',
+    date: '13. März 2027',
+    endDate: '2027-03-13',
+    author: '09:00 - 16:00 Uhr',
+    summary: 'Schriftliche DELF-Prüfungen an der Musterschule (B2: 09:00 Uhr / B1: 13:05 Uhr).',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e15',
+    type: 'event',
+    title: 'WerWillDerKann',
+    date: '15. März 2027',
+    endDate: '2027-03-15',
+    author: '19:00 - 20:00 Uhr',
+    summary: 'Veranstaltungsreihe WerWillDerKann in der Aula.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e16',
+    type: 'event',
+    title: 'Osterferien',
+    date: 'Bis 2. April 2027',
+    endDate: '2027-04-02',
+    author: 'Schulferien',
+    summary: 'Osterferien in Hessen.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  }
+];
+
+const STORAGE_NEWS_KEY = '@musterschule_news_cache_v3';
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v3';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v3';
+const READ_KEY = '@musterschule_read_articles_v3';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -41,7 +267,7 @@ const THEMES = {
     warning: '#FFAB00',
     accent: '#6366F1',
     input: '#F1F5F9',
-    border: '#F1F5F9'
+    border: '#E2E8F0'
   },
   dark: {
     primary: '#3B82F6',     
@@ -84,8 +310,17 @@ const getMostFrequentSymbol = (gradesList) => {
 
 const parseDate = (dateStr) => {
   if (!dateStr) return 0;
-  const [day, month, year] = dateStr.split('.').map(Number);
-  return new Date(year, month - 1, day).getTime();
+  const parts = dateStr.split('.');
+  if (parts.length === 3) {
+    const [day, month, year] = parts.map(Number);
+    return new Date(year, month - 1, day).getTime();
+  }
+  const isoParts = dateStr.split('-');
+  if (isoParts.length === 3) {
+    const [year, month, day] = isoParts.map(Number);
+    return new Date(year, month - 1, day).getTime();
+  }
+  return 0;
 }; 
 
 const getRawAverageForMonths = (gradesList, months) => {
@@ -159,7 +394,17 @@ export default function App() {
 
   const [vPlanLoading, setVPlanLoading] = useState(false);
   const [vPlanEntries, setVPlanEntries] = useState([]);
-  const [vPlanDiagnostics, setVPlanDiagnostics] = useState({ length: 0, textFound: 'NEIN', flexibleDetection: 'NEIN' });
+
+  // --- NACHRICHTEN & TERMINE STATE ---
+  const [news, setNews] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [filteredNewsData, setFilteredNewsData] = useState([]);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [readItems, setReadItems] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsRefreshing, setNewsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [newsSubTab, setNewsSubTab] = useState('news'); // 'news', 'events', 'saved'
 
   // Initiales Laden
   useEffect(() => {
@@ -173,20 +418,26 @@ export default function App() {
         if (t) setTimetable(JSON.parse(t));
         if (d) setIsDark(JSON.parse(d));
         if (c) setSelectedClass(c);
+
+        // Nachrichten- und Termin-Daten laden
+        await loadNewsData();
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
     load();
   }, []);
 
-  // Automatischer Datenabruf bei Start oder Klassenwechsel
+  // Nachrichten Filtern wenn Abfragen oder Filter wechseln
+  useEffect(() => {
+    filterNewsData();
+  }, [searchQuery, news, events, bookmarks, newsSubTab]);
+
   useEffect(() => {
     if (isLoaded) {
       fetchVPlanData();
     }
   }, [selectedClass, isLoaded]);
 
-  // Speichern nur wenn Laden abgeschlossen ist
   useEffect(() => {
     if (isLoaded) {
       AsyncStorage.setItem('grades_data', JSON.stringify(grades));
@@ -211,6 +462,130 @@ export default function App() {
     }
   }, [selectedClass, isLoaded]);
 
+  // --- NACHRICHTEN & TERMINE FUNKTIONEN ---
+  const loadNewsData = async () => {
+    try {
+      setNewsLoading(true);
+      const cachedNews = await AsyncStorage.getItem(STORAGE_NEWS_KEY);
+      const cachedEvents = await AsyncStorage.getItem(STORAGE_EVENTS_KEY);
+      const cachedBookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
+      const cachedRead = await AsyncStorage.getItem(READ_KEY);
+
+      if (cachedNews !== null) setNews(JSON.parse(cachedNews));
+      else {
+        await AsyncStorage.setItem(STORAGE_NEWS_KEY, JSON.stringify(INITIAL_NEWS));
+        setNews(INITIAL_NEWS);
+      }
+
+      if (cachedEvents !== null) setEvents(JSON.parse(cachedEvents));
+      else {
+        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(INITIAL_EVENTS));
+        setEvents(INITIAL_EVENTS);
+      }
+
+      if (cachedBookmarks !== null) setBookmarks(JSON.parse(cachedBookmarks));
+      if (cachedRead !== null) setReadItems(JSON.parse(cachedRead));
+    } catch (e) {
+      Alert.alert('Fehler', 'Fehler beim Laden der Nachrichten.');
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  const onNewsRefresh = async () => {
+    setNewsRefreshing(true);
+    try {
+      await AsyncStorage.setItem(STORAGE_NEWS_KEY, JSON.stringify(news));
+      await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(events));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setNewsRefreshing(false);
+    }
+  };
+
+  const isExpired = (endDateStr) => {
+    if (!endDateStr) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(endDateStr);
+    return eventDate < today;
+  };
+
+  const filterNewsData = () => {
+    let source = [];
+    if (newsSubTab === 'news') {
+      source = news;
+    } else if (newsSubTab === 'events') {
+      source = events.filter(item => !isExpired(item.endDate));
+    } else if (newsSubTab === 'saved') {
+      const allItems = [...news, ...events];
+      source = allItems.filter(item => bookmarks.includes(item.id));
+    }
+
+    if (searchQuery.trim() !== '') {
+      source = source.filter(
+        item =>
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.date.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    setFilteredNewsData(source);
+  };
+
+  const toggleBookmark = async (id) => {
+    try {
+      let updatedBookmarks;
+      if (bookmarks.includes(id)) {
+        updatedBookmarks = bookmarks.filter(bId => bId !== id);
+      } else {
+        updatedBookmarks = [...bookmarks, id];
+      }
+      setBookmarks(updatedBookmarks);
+      await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updatedBookmarks));
+    } catch (e) {
+      Alert.alert('Fehler', 'Lesezeichen konnte nicht gespeichert werden.');
+    }
+  };
+
+  const markAsRead = async (id) => {
+    if (!readItems.includes(id)) {
+      try {
+        const updatedRead = [...readItems, id];
+        setReadItems(updatedRead);
+        await AsyncStorage.setItem(READ_KEY, JSON.stringify(updatedRead));
+      } catch (e) {
+        console.error('Fehler beim Speichern des Gelesen-Status', e);
+      }
+    }
+  };
+
+  const openNewsItem = async (item) => {
+    await markAsRead(item.id);
+    try {
+      const supported = await Linking.canOpenURL(item.link);
+      if (supported) {
+        await Linking.openURL(item.link);
+      } else {
+        Alert.alert('Fehler', 'Link kann nicht geöffnet werden.');
+      }
+    } catch (error) {
+      Alert.alert('Fehler', 'Webseite konnte nicht geöffnet werden.');
+    }
+  };
+
+  const shareNewsItem = async (item) => {
+    try {
+      await Share.share({
+        message: `${item.title}\nDatum: ${item.date} (${item.author})\n\n${item.summary}\n\nMehr Infos: ${item.link}`,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const fetchVPlanData = async () => {
     setVPlanLoading(true);
     try {
@@ -222,13 +597,9 @@ export default function App() {
         }
       });
       const htmlText = await response.text();
-      
       const entries = [];
-      let flexibleFound = false;
-
       const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
       let rowMatch;
-
       const targetClassLower = selectedClass.trim().toLowerCase();
 
       while ((rowMatch = rowRegex.exec(htmlText)) !== null) {
@@ -256,18 +627,11 @@ export default function App() {
 
           const classLower = rowData.klasse.toLowerCase();
           if (targetClassLower && (classLower.includes(targetClassLower) || classLower.includes(targetClassLower.replace(/\s+/g, '')))) {
-            flexibleFound = true;
             entries.push(rowData);
           }
         }
       }
-
       setVPlanEntries(entries);
-      setVPlanDiagnostics({
-        length: htmlText.length,
-        textFound: htmlText.toLowerCase().includes(targetClassLower) ? 'JA' : 'NEIN',
-        flexibleDetection: flexibleFound ? 'JA' : 'NEIN'
-      });
     } catch (err) {
       console.log("VPlan Fetch Fehler: ", err.message);
     } finally {
@@ -401,10 +765,11 @@ export default function App() {
 
   const getNextExams = () => {
     const exams = [];
+    const todayMidnight = new Date().setHours(0,0,0,0);
     Object.values(timetable).forEach(slot => {
       if (slot && slot.examDate) {
         const time = parseDate(slot.examDate);
-        if (time >= new Date().setHours(0,0,0,0)) {
+        if (time >= todayMidnight) {
           const subjectColor = PREDEFINED_SUBJECTS[slot.name] || slot.color || THEME.danger;
           exams.push({ name: slot.name, time, date: slot.examDate, color: subjectColor });
         }
@@ -413,7 +778,6 @@ export default function App() {
     if (exams.length === 0) return [];
     
     const sortedExams = exams.sort((a, b) => a.time - b.time).slice(0, 3);
-    
     return sortedExams.map(exam => {
       const diffDays = Math.ceil((exam.time - Date.now()) / (1000 * 60 * 60 * 24));
       return { name: exam.name, days: diffDays, date: exam.date, color: exam.color };
@@ -427,7 +791,6 @@ export default function App() {
     return days > 0 ? days : null;
   };
 
-  // Tausch von Kapiert.de (jetzt Index 2) und Bärenstark Schule (jetzt Index 3) vollzogen
   const musterLinks = [
     { title: 'Schulportal Hessen', desc: 'Anmeldung, Login', url: 'https://login.schulportal.hessen.de/?url=aHR0cHM6Ly9jb25uZWN0LnNjaHVscG9ydGFsLmhlc3Nlbi5kZS8=&skin=sp&i=5115', icon: '🔐' },
     { title: 'Infos Musterschule', desc: 'Allgemeine Schulnachrichten', url: 'https://infos.musterschule.de/', icon: '📰' },
@@ -482,33 +845,162 @@ export default function App() {
     compactSectionCustom: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderColor: THEME.border },
     manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
     subjectText: { color: THEME.textMain },
-    vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border }
+    vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border },
+    
+    // Dynamische News-Styles
+    newsSubTab: { backgroundColor: THEME.card, borderBottomColor: THEME.border },
+    newsSubTabText: { color: THEME.textSecondary },
+    newsSubTabActiveText: { color: THEME.primary },
+    newsSearchContainer: { backgroundColor: THEME.card },
+    newsSearchInput: { backgroundColor: THEME.input, color: THEME.textMain },
+    newsCard: { backgroundColor: THEME.card },
+    newsReadCard: { backgroundColor: isDark ? '#0F172A' : '#F1F5F9', borderColor: THEME.border, borderWidth: 1 },
+    newsCardTitle: { color: THEME.textMain },
+    newsCardSummary: { color: THEME.textSecondary },
+    newsReadText: { color: THEME.textSecondary },
+    newsFooterBorder: { borderTopColor: THEME.border },
   });
 
   const nextExamsList = getNextExams();
 
+  const renderNewsItem = ({ item }) => {
+    const isBookmarked = bookmarks.includes(item.id);
+    const isRead = readItems.includes(item.id);
+
+    return (
+      <View style={[styles.newsCard, dynamicStyles.newsCard, isRead && dynamicStyles.newsReadCard]}>
+        <View style={styles.newsCardHeader}>
+          <Text style={[styles.newsDateText, isRead && dynamicStyles.newsReadText]}>
+            📅 {item.date} • {item.author} {isRead ? '• Gelesen' : ''}
+          </Text>
+          <TouchableOpacity onPress={() => toggleBookmark(item.id)}>
+            <Text style={styles.newsBookmarkIcon}>{isBookmarked ? '★' : '☆'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.newsCardTitle, dynamicStyles.newsCardTitle, isRead && dynamicStyles.newsReadText]}>{item.title}</Text>
+        <Text style={[styles.newsCardSummary, dynamicStyles.newsCardSummary, isRead && dynamicStyles.newsReadText]}>{item.summary}</Text>
+
+        <View style={[styles.newsCardFooter, dynamicStyles.newsFooterBorder]}>
+          <TouchableOpacity
+            style={styles.newsReadMoreButton}
+            onPress={() => openNewsItem(item)}
+          >
+            <Text style={[styles.newsReadMoreText, isRead && dynamicStyles.newsReadText]}>
+              {isRead ? 'Details ansehen ➔' : 'Öffnen ➔'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.newsShareButton}
+            onPress={() => shareNewsItem(item)}
+          >
+            <Text style={[styles.newsShareText, { color: THEME.textSecondary }]}>Teilen</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      
+      {/* NATIONALE NAVIGATION (6 TABS) */}
       <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
-        {['notes', 'stats', 'timetable', 'pattern', 'backup'].map(tab => (
+        {['news', 'notes', 'stats', 'timetable', 'pattern', 'backup'].map(tab => (
           <TouchableOpacity 
             key={tab} 
             style={[styles.navTabFixed, activeTab === tab && styles.navTabActive]} 
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={styles.navIcon}>{tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}</Text>
+            <Text style={styles.navIcon}>
+              {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}
+            </Text>
             <Text 
               style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} 
               numberOfLines={1} 
               adjustsFontSizeToFit 
-              minimumFontScale={0.85}
+              minimumFontScale={0.8}
             >
-              {tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : 'Backup'}
+              {tab === 'news' ? 'News' : tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : 'Backup'}
             </Text>
           </TouchableOpacity>
         ))}
       </View> 
+
+      {/* NEWS TAB */}
+      {activeTab === 'news' && (
+        <View style={{ flex: 1 }}>
+          {/* Sub Tabs */}
+          <View style={[styles.newsTabContainer, dynamicStyles.newsSubTab]}>
+            <TouchableOpacity
+              style={[styles.newsTab, newsSubTab === 'news' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
+              onPress={() => setNewsSubTab('news')}
+            >
+              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'news' && dynamicStyles.newsSubTabActiveText]}>
+                Nachrichten
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.newsTab, newsSubTab === 'events' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
+              onPress={() => setNewsSubTab('events')}
+            >
+              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'events' && dynamicStyles.newsSubTabActiveText]}>
+                Termine
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.newsTab, newsSubTab === 'saved' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
+              onPress={() => setNewsSubTab('saved')}
+            >
+              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'saved' && dynamicStyles.newsSubTabActiveText]}>
+                Favoriten ({bookmarks.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Suchleiste */}
+          <View style={[styles.newsSearchContainer, dynamicStyles.newsSearchContainer]}>
+            <TextInput
+              style={[styles.newsSearchInput, dynamicStyles.newsSearchInput]}
+              placeholder="Suchen nach Titel, Inhalt, Datum..."
+              placeholderTextColor={THEME.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          {/* Nachrichtensammlung */}
+          {newsLoading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={THEME.primary} />
+              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Inhalte werden geladen...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredNewsData}
+              keyExtractor={(item) => item.id}
+              renderItem={renderNewsItem}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl refreshing={newsRefreshing} onRefresh={onNewsRefresh} colors={[THEME.primary]} />
+              }
+              ListEmptyComponent={
+                <View style={styles.centerContainer}>
+                  <Text style={[styles.emptyText, { color: THEME.textSecondary }]}>
+                    {newsSubTab === 'saved'
+                      ? 'Keine gespeicherten Favoriten vorhanden.'
+                      : 'Keine anstehenden Einträge vorhanden.'}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+      )}
 
       {/* STATS TAB */}
       {activeTab === 'stats' && (
@@ -560,8 +1052,6 @@ export default function App() {
       {/* PATTERN TAB */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
-          
-          {/* Dynamische Klassenauswahl */}
           <View style={{ backgroundColor: THEME.input, borderRadius: 14, padding: 12, marginBottom: 20 }}>
             <Text style={{ color: THEME.textSecondary, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginBottom: 5 }}>Klasse für Vertretungsplan:</Text>
             <TextInput 
@@ -604,7 +1094,7 @@ export default function App() {
           )}
 
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 15 }]}>Schul-Links</Text>
-          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen glance.</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle wichtigen Portale auf einen Blick.</Text>
           {musterLinks.map((link, idx) => (
             <TouchableOpacity key={idx} style={[styles.linkCard, dynamicStyles.linkCard]} onPress={() => Linking.openURL(link.url)} activeOpacity={0.7}>
               <View style={[styles.linkIconContainer, dynamicStyles.linkIconContainer]}><Text style={{ fontSize: 24 }}>{link.icon}</Text></View>
@@ -721,7 +1211,7 @@ export default function App() {
                         </Text>
                         <View style={styles.iconIndicatorRowSmall}>
                           {subjectData?.homework ? <Text style={styles.miniIconSmall}>📝</Text> : null}
-                          {subjectData?.examDate ? <Text style={styles.miniIconSmall}>📅</Text> : null}
+                          {subjectData?.examDate && parseDate(subjectData.examDate) >= new Date().setHours(0,0,0,0) ? <Text style={styles.miniIconSmall}>📅</Text> : null}
                         </View>
                       </TouchableOpacity>
                     );
@@ -907,11 +1397,11 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     flexDirection: 'column',
     flexShrink: 0,
-    width: `${100 / 5}%`
+    width: `${100 / 6}%`
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   navIcon: { fontSize: 18, marginBottom: 4, textAlign: 'center' },
-  navTabText: { fontSize: 11, fontWeight: '700', textAlign: 'center', width: '100%' },
+  navTabText: { fontSize: 10, fontWeight: '700', textAlign: 'center', width: '100%' },
   subHeader: { marginBottom: 25, fontSize: 14 },
   linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
   linkIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
@@ -1012,7 +1502,7 @@ const styles = StyleSheet.create({
   listTitle: { fontSize: 22, fontWeight: '800' },
   addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   addButtonText: { color: '#fff', fontSize: 24 },
-  listContent: { padding: 20 },
+  listContent: { padding: 12 },
   gradeCard: { padding: 15, borderRadius: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   colorIndicator: { width: 4, height: '100%', marginRight: 15, borderRadius: 2 },
   subjectText: { fontSize: 16, fontWeight: '700' },
@@ -1031,5 +1521,101 @@ const styles = StyleSheet.create({
   colorDotActive: { borderWidth: 2, borderColor: '#fff', scaleX: 1.2, scaleY: 1.2 },
   gradeInputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
-  vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 }
+  vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+
+  // News Styles
+  newsTabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  newsTab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  newsTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  newsSearchContainer: {
+    padding: 12,
+  },
+  newsSearchInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    fontSize: 14,
+  },
+  newsCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  newsCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  newsDateText: {
+    fontSize: 12,
+    color: '#64748b',
+    flex: 1,
+    marginRight: 8,
+  },
+  newsBookmarkIcon: {
+    fontSize: 20,
+    color: '#eab308',
+  },
+  newsCardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  newsCardSummary: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  newsCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingTop: 10,
+  },
+  newsReadMoreButton: {
+    paddingVertical: 4,
+  },
+  newsReadMoreText: {
+    color: '#2563eb',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  newsShareButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  newsShareText: {
+    fontSize: 13,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    marginTop: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center',
+  },
 });

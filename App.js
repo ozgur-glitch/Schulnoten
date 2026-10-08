@@ -73,7 +73,7 @@ const INITIAL_EVENTS = [
     title: 'Elternabend (EA) 6d',
     date: '2. November 2026',
     endDate: '2026-11-02',
-    author: '19:00 - 20:30 Uhr',
+    author: '19:00 – 20:30 Uhr',
     summary: 'Klassenelternabend für die Klasse 6d.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -83,7 +83,7 @@ const INITIAL_EVENTS = [
     title: 'Kammermusikabend',
     date: '3. November 2026',
     endDate: '2026-11-03',
-    author: '19:00 - 21:00 Uhr',
+    author: '19:00 – 21:00 Uhr',
     summary: 'Kammermusikabend der Musterschule in der Aula.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -103,7 +103,7 @@ const INITIAL_EVENTS = [
     title: 'Berufsinformationstag BIT',
     date: '14. November 2026',
     endDate: '2026-11-14',
-    author: '10:00 - 13:00 Uhr',
+    author: '10:00 – 13:00 Uhr',
     summary: 'Berufsinformationstag für Schülerinnen und Schüler der E-Phase.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -113,7 +113,7 @@ const INITIAL_EVENTS = [
     title: 'Solistenpodium',
     date: '18. November 2026',
     endDate: '2026-11-18',
-    author: '19:30 - 21:30 Uhr',
+    author: '19:30 – 21:30 Uhr',
     summary: 'Solistenpodium der Fachschaft Musik.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -123,7 +123,7 @@ const INITIAL_EVENTS = [
     title: 'Musikalischer Nachmittag für Grundschüler',
     date: '10. Dezember 2026',
     endDate: '2026-12-10',
-    author: '15:00 - 17:00 Uhr',
+    author: '15:00 – 17:00 Uhr',
     summary: 'Musikalisches Angebot und Instrumentenvorstellung für interessierte Grundschülerinnen und Grundschüler.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -133,7 +133,7 @@ const INITIAL_EVENTS = [
     title: 'Schnuppernachmittag Französisch',
     date: '21. Dezember 2026',
     endDate: '2026-12-21',
-    author: '16:00 - 18:00 Uhr',
+    author: '16:00 – 18:00 Uhr',
     summary: 'Schnuppernachmittag Französisch in der Aula.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -153,7 +153,7 @@ const INITIAL_EVENTS = [
     title: 'Tag der offenen Tür',
     date: '16. Januar 2027',
     endDate: '2027-01-16',
-    author: '09:00 - 12:30 Uhr',
+    author: '09:00 – 12:30 Uhr',
     summary: 'Einblicke in die Musterschule für zukünftige Schülerinnen, Schüler und Eltern.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -183,7 +183,7 @@ const INITIAL_EVENTS = [
     title: 'Oberstufenskifahrt Q1/2',
     date: '29. Jan. 2027 – 02. Feb. 2027',
     endDate: '2027-02-02',
-    author: '12:00 - 20:00 Uhr',
+    author: '12:00 – 20:00 Uhr',
     summary: 'Oberstufenskifahrt für den Jahrgang Q1/Q2.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -193,7 +193,7 @@ const INITIAL_EVENTS = [
     title: 'Musikinstrumente einfach ausprobieren',
     date: '17. Februar 2027',
     endDate: '2027-02-17',
-    author: '15:00 - 16:30 Uhr',
+    author: '15:00 – 16:30 Uhr',
     summary: 'Schnuppertag zum Ausprobieren verschiedener Musikinstrumente.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -203,7 +203,7 @@ const INITIAL_EVENTS = [
     title: 'DELF schriftliche Prüfung',
     date: '13. März 2027',
     endDate: '2027-03-13',
-    author: '09:00 - 16:00 Uhr',
+    author: '09:00 – 16:00 Uhr',
     summary: 'Schriftliche DELF-Prüfungen an der Musterschule (B2: 09:00 Uhr / B1: 13:05 Uhr).',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -213,7 +213,7 @@ const INITIAL_EVENTS = [
     title: 'WerWillDerKann',
     date: '15. März 2027',
     endDate: '2027-03-15',
-    author: '19:00 - 20:00 Uhr',
+    author: '19:00 – 20:00 Uhr',
     summary: 'Veranstaltungsreihe WerWillDerKann in der Aula.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
@@ -586,6 +586,11 @@ export default function App() {
     }
   };
 
+  // Zähler für ungelesene Elemente
+  const unreadNewsCount = news.filter(item => !readItems.includes(item.id)).length;
+  const unreadEventsCount = events.filter(item => !isExpired(item.endDate) && !readItems.includes(item.id)).length;
+  const totalUnreadCount = unreadNewsCount + unreadEventsCount;
+
   const fetchVPlanData = async () => {
     setVPlanLoading(true);
     try {
@@ -870,9 +875,12 @@ export default function App() {
     return (
       <View style={[styles.newsCard, dynamicStyles.newsCard, isRead && dynamicStyles.newsReadCard]}>
         <View style={styles.newsCardHeader}>
-          <Text style={[styles.newsDateText, isRead && dynamicStyles.newsReadText]}>
-            📅 {item.date} • {item.author} {isRead ? '• Gelesen' : ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+            {!isRead && <View style={styles.unreadBadgeIndicator}><Text style={styles.unreadBadgeText}>NEU</Text></View>}
+            <Text style={[styles.newsDateText, isRead && dynamicStyles.newsReadText]}>
+              📅 {item.date} • {item.author}
+            </Text>
+          </View>
           <TouchableOpacity onPress={() => toggleBookmark(item.id)}>
             <Text style={styles.newsBookmarkIcon}>{isBookmarked ? '★' : '☆'}</Text>
           </TouchableOpacity>
@@ -914,9 +922,16 @@ export default function App() {
             style={[styles.navTabFixed, activeTab === tab && styles.navTabActive]} 
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={styles.navIcon}>
-              {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}
-            </Text>
+            <View style={styles.iconBadgeContainer}>
+              <Text style={styles.navIcon}>
+                {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}
+              </Text>
+              {tab === 'news' && totalUnreadCount > 0 && (
+                <View style={styles.mainNavBadge}>
+                  <Text style={styles.mainNavBadgeText}>{totalUnreadCount}</Text>
+                </View>
+              )}
+            </View>
             <Text 
               style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} 
               numberOfLines={1} 
@@ -938,18 +953,32 @@ export default function App() {
               style={[styles.newsTab, newsSubTab === 'news' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
               onPress={() => setNewsSubTab('news')}
             >
-              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'news' && dynamicStyles.newsSubTabActiveText]}>
-                Nachrichten
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'news' && dynamicStyles.newsSubTabActiveText]}>
+                  Nachrichten
+                </Text>
+                {unreadNewsCount > 0 && (
+                  <View style={styles.subTabBadge}>
+                    <Text style={styles.subTabBadgeText}>{unreadNewsCount}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.newsTab, newsSubTab === 'events' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
               onPress={() => setNewsSubTab('events')}
             >
-              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'events' && dynamicStyles.newsSubTabActiveText]}>
-                Termine
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'events' && dynamicStyles.newsSubTabActiveText]}>
+                  Termine
+                </Text>
+                {unreadEventsCount > 0 && (
+                  <View style={styles.subTabBadge}>
+                    <Text style={styles.subTabBadgeText}>{unreadEventsCount}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -966,7 +995,7 @@ export default function App() {
           <View style={[styles.newsSearchContainer, dynamicStyles.newsSearchContainer]}>
             <TextInput
               style={[styles.newsSearchInput, dynamicStyles.newsSearchInput]}
-              placeholder="Suchen nach Titel, Inhalt, Datum..."
+              placeholder="Suchen nach Titel, Inhalt, Datum…"
               placeholderTextColor={THEME.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -977,7 +1006,7 @@ export default function App() {
           {newsLoading ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={THEME.primary} />
-              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Inhalte werden geladen...</Text>
+              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Inhalte werden geladen…</Text>
             </View>
           ) : (
             <FlatList
@@ -1057,7 +1086,7 @@ export default function App() {
             <TextInput 
               style={{ backgroundColor: THEME.card, color: THEME.textMain, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, fontWeight: '700', fontSize: 15 }}
               value={selectedClass}
-              placeholder="z.B. 5b, 6a..."
+              placeholder="z.B. 5b, 6a…"
               placeholderTextColor={THEME.textSecondary}
               onChangeText={setSelectedClass}
               autoCapitalize="none"
@@ -1135,7 +1164,7 @@ export default function App() {
           <TextInput 
             style={[styles.inputSingle, dynamicStyles.inputSingle, {marginTop: 25, height: 100, textAlignVertical: 'top'}]} 
             multiline 
-            placeholder="Code hier einfügen zum Importieren..." 
+            placeholder="Code hier einfügen zum Importieren…" 
             placeholderTextColor={THEME.textSecondary}
             value={importText} 
             onChangeText={setImportText} 
@@ -1250,13 +1279,13 @@ export default function App() {
             <View style={[styles.modalIndicator, dynamicStyles.modalIndicator]} />
             <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Aufgaben & Termine</Text>
             <View style={styles.inputRow}>
-              <TextInput style={[styles.inputSingle, dynamicStyles.inputSingle, {flex: 1, marginBottom: 0}]} placeholder="Hausaufgabe..." placeholderTextColor={THEME.textSecondary} value={hwInput} onChangeText={setHwInput} />
+              <TextInput style={[styles.inputSingle, dynamicStyles.inputSingle, {flex: 1, marginBottom: 0}]} placeholder="Hausaufgabe…" placeholderTextColor={THEME.textSecondary} value={hwInput} onChangeText={setHwInput} />
               <TouchableOpacity onPress={() => setHwInput('')} style={styles.deleteIconBtn}><Text>🗑️</Text></TouchableOpacity>
             </View>
             <View style={[styles.inputRow, {marginTop: 15}]}>
               <TextInput 
                 style={[styles.inputSingle, dynamicStyles.inputSingle, {flex: 1, marginBottom: 0}]} 
-                placeholder="Datum der Arbeit..." 
+                placeholder="Datum der Arbeit…" 
                 placeholderTextColor={THEME.textSecondary}
                 value={examDateInput} 
                 onChangeText={t => setExamDateInput(formatInputDate(t))} 
@@ -1286,7 +1315,7 @@ export default function App() {
               ))}
             </View>
             <View style={[styles.manualSubjectSection, dynamicStyles.manualSubjectSection]}>
-              <TextInput style={[styles.manualInput, dynamicStyles.manualInput]} placeholder="Eigenes Fach..." placeholderTextColor={THEME.textSecondary} value={manualSubjectName} onChangeText={setManualSubjectName} />
+              <TextInput style={[styles.manualInput, dynamicStyles.manualInput]} placeholder="Eigenes Fach…" placeholderTextColor={THEME.textSecondary} value={manualSubjectName} onChangeText={setManualSubjectName} />
               <View style={styles.paletteContainer}>
                 {COLOR_PALETTE.map(c => (
                   <TouchableOpacity key={c} style={[styles.colorDot, { backgroundColor: c }, manualSubjectColor === c && {borderWidth: 3, borderColor: '#fff'}]} onPress={() => setManualSubjectColor(c)} />
@@ -1324,7 +1353,7 @@ export default function App() {
               <View style={[styles.compactSectionCustom, dynamicStyles.compactSectionCustom]}>
                 <TextInput 
                   style={[styles.manualInputCompact, dynamicStyles.manualInputCompact]} 
-                  placeholder="Oder eigenes Fach..." 
+                  placeholder="Oder eigenes Fach…" 
                   placeholderTextColor={THEME.textSecondary}
                   value={customSubject} 
                   onChangeText={setCustomSubject} 
@@ -1400,7 +1429,29 @@ const styles = StyleSheet.create({
     width: `${100 / 6}%`
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  iconBadgeContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   navIcon: { fontSize: 18, marginBottom: 4, textAlign: 'center' },
+  mainNavBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    backgroundColor: '#FF1744',
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  mainNavBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
   navTabText: { fontSize: 10, fontWeight: '700', textAlign: 'center', width: '100%' },
   subHeader: { marginBottom: 25, fontSize: 14 },
   linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
@@ -1537,6 +1588,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  subTabBadge: {
+    backgroundColor: '#FF1744',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: 6,
+  },
+  subTabBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  unreadBadgeIndicator: {
+    backgroundColor: '#FF1744',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    marginRight: 6,
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
   newsSearchContainer: {
     padding: 12,
   },
@@ -1566,7 +1641,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     flex: 1,
-    marginRight: 8,
   },
   newsBookmarkIcon: {
     fontSize: 20,

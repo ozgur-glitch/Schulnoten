@@ -8,72 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// --- DATEN FÜR NACHRICHTEN & TERMINE ---
-const INITIAL_NEWS = [
-  {
-    id: 'n0',
-    type: 'news',
-    title: 'Lehrersammelkarten 🃏',
-    date: '3. November 2026',
-    author: 'Micha Häckel',
-    summary: 'Der Abi-Jahrgang 2027 hat sich eine besondere Aktion ausgedacht, um Geld für seinen Abiball zu sammeln: Gemeinsam mit 33 Lehrkräften wurden Sammelkarten gestaltet, die ab Mittwoch, 4. November, in der Schule verkauft werden.',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n1',
-    type: 'news',
-    title: 'Herzliche Grüße aus Japan! 🇯🇵',
-    date: '5. Oktober 2026',
-    author: 'Webmaster',
-    summary: 'Wir erleben hier in Japan unvergessliche Tage mit vielen spannenden Eindrücken, herzlichen Begegnungen und beeindruckender Gastfreundschaft.',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n2',
-    type: 'news',
-    title: 'Lauf für mehr Zeit 2026',
-    date: '24. September 2026',
-    author: 'Frauke Lode',
-    summary: 'Ein Jahr der Rekorde: Benjamin Seitzinger läuft auf den 3. Platz (17:03 Min). Die Musterschulgemeinde gewinnt den Preis für das größte Schulteam!',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n3',
-    type: 'news',
-    title: '🍂 Projektunterrichtstage',
-    date: '19. September 2026',
-    author: 'Kristin Voigt',
-    summary: 'In der letzten Woche vor den Herbstferien finden traditionell unsere Projektunterrichtstage (PUT) statt.',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n4',
-    type: 'news',
-    title: 'Forschung trifft Zukunft: Automechanika 2026',
-    date: '16. September 2026',
-    author: 'Webmaster',
-    summary: 'Für den Wahlunterricht Naturwissenschaften des 10. Jahrgangs ging es am 9. September 2026 auf das Frankfurter Messegelände.',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n5',
-    type: 'news',
-    title: 'WerWillDerKann am 22. September',
-    date: '8. September 2026',
-    author: 'Julian Teufel',
-    summary: 'Einladung zur Veranstaltung WerWillDerKann für die gesamte Schulgemeinde.',
-    link: 'https://infos.musterschule.de/'
-  },
-  {
-    id: 'n6',
-    type: 'news',
-    title: 'Jahrbuch 2025/26 wieder erhältlich!',
-    date: '2. September 2026',
-    author: 'Webmaster',
-    summary: 'Da die erste Auflage innerhalb einer Woche vergriffen war, haben wir noch einmal nachproduziert!',
-    link: 'https://infos.musterschule.de/'
-  }
-];
+// Über den JSON-Proxy wird der XML-Feed sauber und ohne Blockaden geladen
+const RSS_API_URL = 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fpolitepaul.com%2Ffd%2FRmQPVRxHgqdI.xml';
 
 const INITIAL_EVENTS = [
   {
@@ -238,12 +174,11 @@ const INITIAL_EVENTS = [
   }
 ];
 
-// Speicher-Schlüssel auf v8 erhöht
-const STORAGE_NEWS_KEY = '@musterschule_news_cache_v8';
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v8';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v8';
-const READ_KEY = '@musterschule_read_articles_v8';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v8';
+// Speicher-Schlüssel auf v11 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v11';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v11';
+const READ_KEY = '@musterschule_read_articles_v11';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v11';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -302,7 +237,6 @@ let THEME = THEMES.light;
 const DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
 const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-// --- Hilfsfunktionen ---
 const getPureNumber = (gradeStr) => {
   if (!gradeStr) return 0;
   const num = parseFloat(gradeStr.toString().replace(',', '.'));
@@ -406,7 +340,7 @@ export default function App() {
   const [vPlanLoading, setVPlanLoading] = useState(false);
   const [vPlanEntries, setVPlanEntries] = useState([]);
 
-  // --- NACHRICHTEN & TERMINE STATE ---
+  // --- RSS NEWS & TERMINE STATE ---
   const [news, setNews] = useState([]);
   const [events, setEvents] = useState([]);
   const [filteredNewsData, setFilteredNewsData] = useState([]);
@@ -417,7 +351,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newsSubTab, setNewsSubTab] = useState('news'); // 'news', 'events', 'saved'
 
-  // Initiales Laden
   useEffect(() => {
     const load = async () => {
       try {
@@ -430,13 +363,80 @@ export default function App() {
         if (d) setIsDark(JSON.parse(d));
         if (c) setSelectedClass(c);
 
-        await loadNewsData();
+        await fetchRSSNews();
+        await loadEventsAndUserData();
         await checkAndAutoFetch();
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
     load();
   }, []);
+
+  // RSS-Nachrichten über den JSON-Konverter laden
+  const fetchRSSNews = async () => {
+    try {
+      setNewsLoading(true);
+      const response = await fetch(RSS_API_URL);
+      const data = await response.json();
+
+      if (data && data.items) {
+        const items = data.items.map((item, index) => {
+          const cleanDescription = item.description 
+            ? item.description.replace(/<[^>]*>/g, '').trim() 
+            : '';
+
+          let formattedDate = 'Aktuell';
+          if (item.pubDate) {
+            const d = new Date(item.pubDate);
+            if (!isNaN(d.getTime())) {
+              formattedDate = d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+            }
+          }
+
+          return {
+            id: `rss_${index}`,
+            type: 'news',
+            title: item.title || 'Kein Titel',
+            date: formattedDate,
+            author: item.author || 'Musterschule',
+            summary: cleanDescription.length > 180 ? cleanDescription.substring(0, 180) + '...' : cleanDescription,
+            link: item.link || 'https://infos.musterschule.de/'
+          };
+        });
+
+        setNews(items);
+      }
+    } catch (e) {
+      console.log("Fehler beim Abrufen des RSS-Feeds:", e);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  const loadEventsAndUserData = async () => {
+    try {
+      const cachedEvents = await AsyncStorage.getItem(STORAGE_EVENTS_KEY);
+      const cachedBookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
+      const cachedRead = await AsyncStorage.getItem(READ_KEY);
+
+      if (cachedEvents !== null) setEvents(JSON.parse(cachedEvents));
+      else {
+        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(INITIAL_EVENTS));
+        setEvents(INITIAL_EVENTS);
+      }
+
+      if (cachedBookmarks !== null) setBookmarks(JSON.parse(cachedBookmarks));
+      if (cachedRead !== null) setReadItems(JSON.parse(cachedRead));
+    } catch (e) {
+      console.log('Fehler beim Laden der Events', e);
+    }
+  };
+
+  const onNewsRefresh = async () => {
+    setNewsRefreshing(true);
+    await fetchRSSNews();
+    setNewsRefreshing(false);
+  };
 
   const checkAndAutoFetch = async () => {
     try {
@@ -560,47 +560,6 @@ export default function App() {
       AsyncStorage.setItem('selected_class', selectedClass);
     }
   }, [selectedClass, isLoaded]);
-
-  const loadNewsData = async () => {
-    try {
-      setNewsLoading(true);
-      const cachedNews = await AsyncStorage.getItem(STORAGE_NEWS_KEY);
-      const cachedEvents = await AsyncStorage.getItem(STORAGE_EVENTS_KEY);
-      const cachedBookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
-      const cachedRead = await AsyncStorage.getItem(READ_KEY);
-
-      if (cachedNews !== null) setNews(JSON.parse(cachedNews));
-      else {
-        await AsyncStorage.setItem(STORAGE_NEWS_KEY, JSON.stringify(INITIAL_NEWS));
-        setNews(INITIAL_NEWS);
-      }
-
-      if (cachedEvents !== null) setEvents(JSON.parse(cachedEvents));
-      else {
-        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(INITIAL_EVENTS));
-        setEvents(INITIAL_EVENTS);
-      }
-
-      if (cachedBookmarks !== null) setBookmarks(JSON.parse(cachedBookmarks));
-      if (cachedRead !== null) setReadItems(JSON.parse(cachedRead));
-    } catch (e) {
-      Alert.alert('Fehler', 'Fehler beim Laden der Nachrichten.');
-    } finally {
-      setNewsLoading(false);
-    }
-  };
-
-  const onNewsRefresh = async () => {
-    setNewsRefreshing(true);
-    try {
-      await AsyncStorage.setItem(STORAGE_NEWS_KEY, JSON.stringify(news));
-      await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(events));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setNewsRefreshing(false);
-    }
-  };
 
   const isExpired = (endDateStr) => {
     if (!endDateStr) return false;
@@ -891,7 +850,7 @@ export default function App() {
         color: stats[name].color, 
         trends: calculateTrends(stats[name].raw, false) 
       };
-    }).sort((a, b) => a.rawAvg - b.rawAvg); // Hier nach Notendurchschnitt aufsteigend sortiert!
+    }).sort((a, b) => a.rawAvg - b.rawAvg);
   };
 
   const getNextExams = () => {
@@ -1124,7 +1083,7 @@ export default function App() {
           {newsLoading ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={THEME.primary} />
-              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Inhalte werden geladen…</Text>
+              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Nachrichten werden geladen…</Text>
             </View>
           ) : (
             <FlatList
@@ -1705,9 +1664,9 @@ const styles = StyleSheet.create({
   newsCardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
   newsCardSummary: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
   newsCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10 },
-  newsReadMoreButton: { paddingVertical: 4 },
+  newsReadMoreButton: { padding: 4 },
   newsReadMoreText: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
-  newsShareButton: { paddingVertical: 4, paddingHorizontal: 8 },
+  newsShareButton: { padding: 4, paddingHorizontal: 8 },
   newsShareText: { fontSize: 13 },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 40 },
   loadingText: { marginTop: 10 },

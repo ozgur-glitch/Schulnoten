@@ -11,6 +11,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // --- DATEN FÜR NACHRICHTEN & TERMINE ---
 const INITIAL_NEWS = [
   {
+    id: 'n0',
+    type: 'news',
+    title: 'Lehrersammelkarten 🃏',
+    date: '3. November 2026',
+    author: 'Micha Häckel',
+    summary: 'Der Abi-Jahrgang 2027 hat sich eine besondere Aktion ausgedacht, um Geld für seinen Abiball zu sammeln: Gemeinsam mit 33 Lehrkräften wurden Sammelkarten gestaltet, die ab Mittwoch, 4. November, in der Schule verkauft werden.',
+    link: 'https://infos.musterschule.de/'
+  },
+  {
     id: 'n1',
     type: 'news',
     title: 'Herzliche Grüße aus Japan! 🇯🇵',
@@ -70,65 +79,45 @@ const INITIAL_EVENTS = [
   {
     id: 'e1',
     type: 'event',
-    title: 'Elternabend (EA) 6d',
-    date: '2. November 2026',
-    endDate: '2026-11-02',
-    author: '19:00 – 20:30 Uhr',
-    summary: 'Klassenelternabend für die Klasse 6d.',
+    title: 'Berufsinformationstag BIT',
+    date: '14. November 2026',
+    endDate: '2026-11-14',
+    author: '10:00 – 13:00 Uhr',
+    summary: 'Berufsinformationstag BIT für Schülerinnen und Schüler der E-Phase.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e2',
     type: 'event',
-    title: 'Kammermusikabend',
-    date: '3. November 2026',
-    endDate: '2026-11-03',
-    author: '19:00 – 21:00 Uhr',
-    summary: 'Kammermusikabend der Musterschule in der Aula.',
+    title: 'Solistenpodium',
+    date: '18. November 2026',
+    endDate: '2026-11-18',
+    author: '19:30 – 21:30 Uhr',
+    summary: 'Musikalisches Solistenpodium.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e3',
     type: 'event',
-    title: 'Pädagogischer Tag',
-    date: '9. November 2026',
-    endDate: '2026-11-09',
-    author: 'Ganztägig',
-    summary: 'Pädagogischer Tag für das Kollegium.',
+    title: 'Mathe-Atelier',
+    date: '24. November 2026',
+    endDate: '2026-11-24',
+    author: '09:30 – 12:00 Uhr',
+    summary: 'Offenes Mathe-Atelier.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e4',
     type: 'event',
-    title: 'Berufsinformationstag BIT',
-    date: '14. November 2026',
-    endDate: '2026-11-14',
-    author: '10:00 – 13:00 Uhr',
-    summary: 'Berufsinformationstag für Schülerinnen und Schüler der E-Phase.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e5',
-    type: 'event',
-    title: 'Solistenpodium',
-    date: '18. November 2026',
-    endDate: '2026-11-18',
-    author: '19:30 – 21:30 Uhr',
-    summary: 'Solistenpodium der Fachschaft Musik.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e6',
-    type: 'event',
     title: 'Musikalischer Nachmittag für Grundschüler',
     date: '10. Dezember 2026',
     endDate: '2026-12-10',
     author: '15:00 – 17:00 Uhr',
-    summary: 'Musikalisches Angebot und Instrumentenvorstellung für interessierte Grundschülerinnen und Grundschüler.',
+    summary: 'Einladung für interessierte Grundschülerinnen und Grundschüler.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
-    id: 'e7',
+    id: 'e5',
     type: 'event',
     title: 'Schnuppernachmittag Französisch',
     date: '21. Dezember 2026',
@@ -138,67 +127,77 @@ const INITIAL_EVENTS = [
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
-    id: 'e8',
+    id: 'e6',
     type: 'event',
     title: 'Weihnachtsferien',
-    date: '23. Dez. 2026 – 12. Jan. 2027',
+    date: 'Bis 12. Januar 2027',
     endDate: '2027-01-12',
     author: 'Schulferien',
-    summary: 'Erholsame Weihnachtsferien für die gesamte Schulgemeinde.',
+    summary: 'Weihnachtsferien in Hessen.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
-    id: 'e9',
+    id: 'e7',
     type: 'event',
     title: 'Tag der offenen Tür',
     date: '16. Januar 2027',
     endDate: '2027-01-16',
     author: '09:00 – 12:30 Uhr',
-    summary: 'Einblicke in die Musterschule für zukünftige Schülerinnen, Schüler und Eltern.',
+    summary: 'Tag der offenen Tür an der Musterschule.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e8',
+    type: 'event',
+    title: 'Musikarbeitstage in Rothenfels',
+    date: 'Bis 22. Januar 2027',
+    endDate: '2027-01-22',
+    author: 'Klassenfahrt / Projekt',
+    summary: 'Traditionelle Musikarbeitstage auf Burg Rothenfels.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e9',
+    type: 'event',
+    title: 'Januarkonzerte',
+    date: 'Bis 28. Januar 2027',
+    endDate: '2027-01-28',
+    author: 'Abendveranstaltung',
+    summary: 'Die jährlichen Januarkonzerte der Musterschule.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e10',
     type: 'event',
-    title: 'Musikarbeitstage in Rothenfels',
-    date: 'Bis 22. Januar 2027',
-    endDate: '2027-01-22',
-    author: 'Mehrtägig',
-    summary: 'Proben- und Musikarbeitstage der Ensembles auf Burg Rothenfels.',
+    title: 'Oberstufenskifahrt Q1/2',
+    date: '29. Januar – 2. Februar 2027',
+    endDate: '2027-02-02',
+    author: '12:00 – 20:00 Uhr',
+    summary: 'Skifahrt der Q1/Q2 Stufe.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e11',
     type: 'event',
-    title: 'Januarkonzerte',
-    date: 'Bis 28. Januar 2027',
-    endDate: '2027-01-28',
-    author: 'Abendveranstaltungen',
-    summary: 'Traditionelle Januarkonzerte der Musterschule.',
+    title: 'Musikinstrumente einfach ausprobieren',
+    date: '17. Februar 2027',
+    endDate: '2027-02-17',
+    author: '15:00 – 16:30 Uhr',
+    summary: 'Instrumenten-Schnuppern.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e12',
     type: 'event',
-    title: 'Oberstufenskifahrt Q1/2',
-    date: '29. Jan. 2027 – 02. Feb. 2027',
-    endDate: '2027-02-02',
-    author: '12:00 – 20:00 Uhr',
-    summary: 'Oberstufenskifahrt für den Jahrgang Q1/Q2.',
+    title: 'Elternabend Suchprävention (SEB)',
+    date: '18. Februar 2027',
+    endDate: '2027-02-18',
+    author: '19:00 – 20:30 Uhr',
+    summary: 'Elternabend zum Thema Suchtprävention.',
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
     id: 'e13',
-    type: 'event',
-    title: 'Musikinstrumente einfach ausprobieren',
-    date: '17. Februar 2027',
-    endDate: '2027-02-17',
-    author: '15:00 – 16:30 Uhr',
-    summary: 'Schnuppertag zum Ausprobieren verschiedener Musikinstrumente.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e14',
     type: 'event',
     title: 'DELF schriftliche Prüfung',
     date: '13. März 2027',
@@ -208,7 +207,7 @@ const INITIAL_EVENTS = [
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
-    id: 'e15',
+    id: 'e14',
     type: 'event',
     title: 'WerWillDerKann',
     date: '15. März 2027',
@@ -218,21 +217,33 @@ const INITIAL_EVENTS = [
     link: 'https://infos.musterschule.de/?page_id=394810'
   },
   {
-    id: 'e16',
+    id: 'e15',
     type: 'event',
     title: 'Osterferien',
-    date: 'Bis 2. April 2027',
+    date: '22. März – 2. April 2027',
     endDate: '2027-04-02',
     author: 'Schulferien',
     summary: 'Osterferien in Hessen.',
     link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e16',
+    type: 'event',
+    title: 'Maifeiertag',
+    date: '1. Mai 2027',
+    endDate: '2027-05-01',
+    author: 'Gesetzlicher Feiertag',
+    summary: 'Kein Unterricht am Maifeiertag.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
   }
 ];
 
-const STORAGE_NEWS_KEY = '@musterschule_news_cache_v3';
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v3';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v3';
-const READ_KEY = '@musterschule_read_articles_v3';
+// Speicher-Schlüssel auf v7 erhöht, damit der Cache komplett erneuert wird
+const STORAGE_NEWS_KEY = '@musterschule_news_cache_v7';
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v7';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v7';
+const READ_KEY = '@musterschule_read_articles_v7';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v7';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -421,11 +432,104 @@ export default function App() {
 
         // Nachrichten- und Termin-Daten laden
         await loadNewsData();
+
+        // Automatischen täglichen Abruf prüfen
+        await checkAndAutoFetch();
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
     load();
   }, []);
+
+  // Automatische tägliche Aktualisierungsprüfung
+  const checkAndAutoFetch = async () => {
+    try {
+      const lastFetchTime = await AsyncStorage.getItem(LAST_FETCH_KEY);
+      const now = Date.now();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+
+      if (!lastFetchTime || now - parseInt(lastFetchTime, 10) > twentyFourHours) {
+        await fetchVPlanDataSilent();
+        await AsyncStorage.setItem(LAST_FETCH_KEY, now.toString());
+      }
+    } catch (e) {
+      console.log("Fehler beim automatischen Abruf:", e);
+    }
+  };
+
+  const fetchVPlanDataSilent = async () => {
+    try {
+      const response = await fetch('https://www.musterschule.de/UNTIS/Vertretungsplan/show.php?plan=H_Schueler_heute', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      const htmlText = await response.text();
+      const entries = [];
+      const lines = htmlText.split('\n');
+      let currentPlanDate = 'Aktueller Plan';
+
+      const targetClassRaw = selectedClass.trim();
+      const targetClassLower = targetClassRaw.toLowerCase();
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const dateMatch = line.match(/(\d{1,2}\.\d{1,2}\.\d{4}\s+[A-Za-zÄÖÜäöüß]+)/);
+        if (dateMatch) {
+          currentPlanDate = dateMatch[1];
+        }
+
+        if (line.includes('<tr')) {
+          let rowContent = line;
+          while (i < lines.length && !line.includes('</tr>')) {
+            i++;
+            if (lines[i]) rowContent += ' ' + lines[i];
+          }
+
+          const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+          let cellMatch;
+          const cells = [];
+
+          while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+            const cleanCell = cellMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+            cells.push(cleanCell);
+          }
+
+          if (cells.length >= 4) {
+            const rowData = {
+              datum: currentPlanDate,
+              klasse: cells[0] || '',
+              stunde: cells[1] || '',
+              lehrer: cells[2] || '',
+              fach: cells[3] || '',
+              vertreter: cells[4] || '---',
+              vFach: cells[5] || '---',
+              raum: cells[6] || '---',
+              notiz: cells[7] || ''
+            };
+
+            const classLower = rowData.klasse.toLowerCase();
+            const isMatch = 
+              classLower === targetClassLower ||
+              classLower.includes(targetClassLower) ||
+              classLower.replace(/\s+/g, '').includes(targetClassLower.replace(/\s+/g, '')) ||
+              (targetClassLower.length >= 2 && classLower.includes(targetClassLower[0]) && classLower.includes(targetClassLower.slice(1)));
+
+            if (targetClassRaw && isMatch) {
+              entries.push(rowData);
+            }
+          }
+        }
+      }
+      if (entries.length > 0) {
+        setVPlanEntries(entries);
+      }
+    } catch (err) {
+      console.log("Stiller VPlan Fetch Fehler: ", err.message);
+    }
+  };
 
   // Nachrichten Filtern wenn Abfragen oder Filter wechseln
   useEffect(() => {
@@ -508,6 +612,13 @@ export default function App() {
     if (!endDateStr) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const parts = endDateStr.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts.map(Number);
+      const eventDate = new Date(year, month - 1, day);
+      return eventDate < today;
+    }
     const eventDate = new Date(endDateStr);
     return eventDate < today;
   };
@@ -603,36 +714,58 @@ export default function App() {
       });
       const htmlText = await response.text();
       const entries = [];
-      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-      let rowMatch;
-      const targetClassLower = selectedClass.trim().toLowerCase();
+      const lines = htmlText.split('\n');
+      let currentPlanDate = 'Aktueller Plan';
 
-      while ((rowMatch = rowRegex.exec(htmlText)) !== null) {
-        const rowContent = rowMatch[1];
-        const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-        let cellMatch;
-        const cells = [];
+      const targetClassRaw = selectedClass.trim();
+      const targetClassLower = targetClassRaw.toLowerCase();
 
-        while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-          const cleanCell = cellMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-          cells.push(cleanCell);
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const dateMatch = line.match(/(\d{1,2}\.\d{1,2}\.\d{4}\s+[A-Za-zÄÖÜäöüß]+)/);
+        if (dateMatch) {
+          currentPlanDate = dateMatch[1];
         }
 
-        if (cells.length >= 4) {
-          const rowData = {
-            klasse: cells[0] || '',
-            stunde: cells[1] || '',
-            lehrer: cells[2] || '',
-            fach: cells[3] || '',
-            vertreter: cells[4] || '---',
-            vFach: cells[5] || '---',
-            raum: cells[6] || '---',
-            notiz: cells[7] || ''
-          };
+        if (line.includes('<tr')) {
+          let rowContent = line;
+          while (i < lines.length && !line.includes('</tr>')) {
+            i++;
+            if (lines[i]) rowContent += ' ' + lines[i];
+          }
 
-          const classLower = rowData.klasse.toLowerCase();
-          if (targetClassLower && (classLower.includes(targetClassLower) || classLower.includes(targetClassLower.replace(/\s+/g, '')))) {
-            entries.push(rowData);
+          const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+          let cellMatch;
+          const cells = [];
+
+          while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+            const cleanCell = cellMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+            cells.push(cleanCell);
+          }
+
+          if (cells.length >= 4) {
+            const rowData = {
+              datum: currentPlanDate,
+              klasse: cells[0] || '',
+              stunde: cells[1] || '',
+              lehrer: cells[2] || '',
+              fach: cells[3] || '',
+              vertreter: cells[4] || '---',
+              vFach: cells[5] || '---',
+              raum: cells[6] || '---',
+              notiz: cells[7] || ''
+            };
+
+            const classLower = rowData.klasse.toLowerCase();
+            const isMatch = 
+              classLower === targetClassLower ||
+              classLower.includes(targetClassLower) ||
+              classLower.replace(/\s+/g, '').includes(targetClassLower.replace(/\s+/g, '')) ||
+              (targetClassLower.length >= 2 && classLower.includes(targetClassLower[0]) && classLower.includes(targetClassLower.slice(1)));
+
+            if (targetClassRaw && isMatch) {
+              entries.push(rowData);
+            }
           }
         }
       }
@@ -798,7 +931,6 @@ export default function App() {
 
   const musterLinks = [
     { title: 'Schulportal Hessen', desc: 'Anmeldung, Login', url: 'https://login.schulportal.hessen.de/?url=aHR0cHM6Ly9jb25uZWN0LnNjaHVscG9ydGFsLmhlc3Nlbi5kZS8=&skin=sp&i=5115', icon: '🔐' },
-    { title: 'Infos Musterschule', desc: 'Allgemeine Schulnachrichten', url: 'https://infos.musterschule.de/', icon: '📰' },
     { title: 'Kapiert.de', desc: 'Das dreistufige Lernportal', url: 'https://www.kapiert.de/', icon: '💡' },
     { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
   ];
@@ -1108,8 +1240,12 @@ export default function App() {
           ) : (
             vPlanEntries.map((item, index) => (
               <View key={index} style={[styles.vPlanCard, dynamicStyles.vPlanCard]}>
-                <Text style={{ color: THEME.textMain, fontWeight: '700', fontSize: 14 }}>
-                  Klasse: {item.klasse} | Std: {item.stunde} | Lehrer: {item.lehrer}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ color: THEME.primary, fontWeight: '800', fontSize: 12 }}>📅 {item.datum}</Text>
+                  <Text style={{ color: THEME.textSecondary, fontSize: 12, fontWeight: '700' }}>Klasse: {item.klasse}</Text>
+                </View>
+                <Text style={{ color: THEME.textMain, fontWeight: '700', fontSize: 14, marginTop: 2 }}>
+                  Std: {item.stunde} | Lehrer: {item.lehrer}
                 </Text>
                 <Text style={{ color: THEME.textSecondary, fontSize: 13, marginTop: 3 }}>
                   Fach: {item.fach} {item.vertreter !== '---' && `➔ Vertreter: ${item.vertreter}`}

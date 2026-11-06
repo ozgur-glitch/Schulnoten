@@ -238,12 +238,12 @@ const INITIAL_EVENTS = [
   }
 ];
 
-// Speicher-Schlüssel auf v7 erhöht, damit der Cache komplett erneuert wird
-const STORAGE_NEWS_KEY = '@musterschule_news_cache_v7';
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v7';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v7';
-const READ_KEY = '@musterschule_read_articles_v7';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v7';
+// Speicher-Schlüssel auf v8 erhöht
+const STORAGE_NEWS_KEY = '@musterschule_news_cache_v8';
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v8';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v8';
+const READ_KEY = '@musterschule_read_articles_v8';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v8';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -430,10 +430,7 @@ export default function App() {
         if (d) setIsDark(JSON.parse(d));
         if (c) setSelectedClass(c);
 
-        // Nachrichten- und Termin-Daten laden
         await loadNewsData();
-
-        // Automatischen täglichen Abruf prüfen
         await checkAndAutoFetch();
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
@@ -441,7 +438,6 @@ export default function App() {
     load();
   }, []);
 
-  // Automatische tägliche Aktualisierungsprüfung
   const checkAndAutoFetch = async () => {
     try {
       const lastFetchTime = await AsyncStorage.getItem(LAST_FETCH_KEY);
@@ -531,7 +527,6 @@ export default function App() {
     }
   };
 
-  // Nachrichten Filtern wenn Abfragen oder Filter wechseln
   useEffect(() => {
     filterNewsData();
   }, [searchQuery, news, events, bookmarks, newsSubTab]);
@@ -566,7 +561,6 @@ export default function App() {
     }
   }, [selectedClass, isLoaded]);
 
-  // --- NACHRICHTEN & TERMINE FUNKTIONEN ---
   const loadNewsData = async () => {
     try {
       setNewsLoading(true);
@@ -697,7 +691,6 @@ export default function App() {
     }
   };
 
-  // Zähler für ungelesene Elemente
   const unreadNewsCount = news.filter(item => !readItems.includes(item.id)).length;
   const unreadEventsCount = events.filter(item => !isExpired(item.endDate) && !readItems.includes(item.id)).length;
   const totalUnreadCount = unreadNewsCount + unreadEventsCount;
@@ -898,7 +891,7 @@ export default function App() {
         color: stats[name].color, 
         trends: calculateTrends(stats[name].raw, false) 
       };
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    }).sort((a, b) => a.rawAvg - b.rawAvg); // Hier nach Notendurchschnitt aufsteigend sortiert!
   };
 
   const getNextExams = () => {
@@ -983,8 +976,6 @@ export default function App() {
     manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
     subjectText: { color: THEME.textMain },
     vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border },
-    
-    // Dynamische News-Styles
     newsSubTab: { backgroundColor: THEME.card, borderBottomColor: THEME.border },
     newsSubTabText: { color: THEME.textSecondary },
     newsSubTabActiveText: { color: THEME.primary },
@@ -1046,7 +1037,6 @@ export default function App() {
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
-      {/* NATIONALE NAVIGATION (6 TABS) */}
       <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
         {['news', 'notes', 'stats', 'timetable', 'pattern', 'backup'].map(tab => (
           <TouchableOpacity 
@@ -1076,10 +1066,8 @@ export default function App() {
         ))}
       </View> 
 
-      {/* NEWS TAB */}
       {activeTab === 'news' && (
         <View style={{ flex: 1 }}>
-          {/* Sub Tabs */}
           <View style={[styles.newsTabContainer, dynamicStyles.newsSubTab]}>
             <TouchableOpacity
               style={[styles.newsTab, newsSubTab === 'news' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
@@ -1123,7 +1111,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Suchleiste */}
           <View style={[styles.newsSearchContainer, dynamicStyles.newsSearchContainer]}>
             <TextInput
               style={[styles.newsSearchInput, dynamicStyles.newsSearchInput]}
@@ -1134,7 +1121,6 @@ export default function App() {
             />
           </View>
 
-          {/* Nachrichtensammlung */}
           {newsLoading ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={THEME.primary} />
@@ -1163,7 +1149,6 @@ export default function App() {
         </View>
       )}
 
-      {/* STATS TAB */}
       {activeTab === 'stats' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.statsScrollContent}>
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Gesamt-Statistik</Text>
@@ -1180,7 +1165,7 @@ export default function App() {
             </View>
           </View>
 
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer (nach Note sortiert)</Text>
           {getSubjectStats().map((item, idx) => (
             <View key={idx} style={[styles.subjectStatContainer, dynamicStyles.subjectStatContainer]}>
               <View style={styles.subjectStatRow}>
@@ -1210,7 +1195,6 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* PATTERN TAB */}
       {activeTab === 'pattern' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
           <View style={{ backgroundColor: THEME.input, borderRadius: 14, padding: 12, marginBottom: 20 }}>
@@ -1281,7 +1265,6 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* BACKUP TAB */}
       {activeTab === 'backup' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
@@ -1311,7 +1294,6 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* TIMETABLE TAB */}
       {activeTab === 'timetable' && (
         <View style={styles.ttContainer}>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
@@ -1388,7 +1370,6 @@ export default function App() {
         </View>
       )}
 
-      {/* NOTES TAB */}
       {activeTab === 'notes' && (
         <View style={{ flex: 1 }}>
           <View style={styles.listHeader}>
@@ -1408,7 +1389,6 @@ export default function App() {
         </View>
       )}
 
-      {/* MODALS */}
       <Modal animationType="fade" transparent={true} visible={hwModalVisible}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, dynamicStyles.modalContent, { paddingBottom: 30 }]}>
@@ -1709,123 +1689,27 @@ const styles = StyleSheet.create({
   gradeInputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
   vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
-
-  // News Styles
-  newsTabContainer: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-  },
-  newsTab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  newsTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  subTabBadge: {
-    backgroundColor: '#FF1744',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    marginLeft: 6,
-  },
-  subTabBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  unreadBadgeIndicator: {
-    backgroundColor: '#FF1744',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    marginRight: 6,
-  },
-  unreadBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  newsSearchContainer: {
-    padding: 12,
-  },
-  newsSearchInput: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    fontSize: 14,
-  },
-  newsCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  newsCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  newsDateText: {
-    fontSize: 12,
-    color: '#64748b',
-    flex: 1,
-  },
-  newsBookmarkIcon: {
-    fontSize: 20,
-    color: '#eab308',
-  },
-  newsCardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  newsCardSummary: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  newsCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    paddingTop: 10,
-  },
-  newsReadMoreButton: {
-    paddingVertical: 4,
-  },
-  newsReadMoreText: {
-    color: '#2563eb',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  newsShareButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  newsShareText: {
-    fontSize: 13,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    marginTop: 40,
-  },
-  loadingText: {
-    marginTop: 10,
-  },
-  emptyText: {
-    fontSize: 15,
-    textAlign: 'center',
-  },
+  newsTabContainer: { flexDirection: 'row', borderBottomWidth: 1 },
+  newsTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  newsTabText: { fontSize: 13, fontWeight: '600' },
+  subTabBadge: { backgroundColor: '#FF1744', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 },
+  subTabBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  unreadBadgeIndicator: { backgroundColor: '#FF1744', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginRight: 6 },
+  unreadBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
+  newsSearchContainer: { padding: 12 },
+  newsSearchInput: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, fontSize: 14 },
+  newsCard: { borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  newsCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  newsDateText: { fontSize: 12, color: '#64748b', flex: 1 },
+  newsBookmarkIcon: { fontSize: 20, color: '#eab308' },
+  newsCardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
+  newsCardSummary: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
+  newsCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10 },
+  newsReadMoreButton: { paddingVertical: 4 },
+  newsReadMoreText: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
+  newsShareButton: { paddingVertical: 4, paddingHorizontal: 8 },
+  newsShareText: { fontSize: 13 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 40 },
+  loadingText: { marginTop: 10 },
+  emptyText: { fontSize: 15, textAlign: 'center' },
 });

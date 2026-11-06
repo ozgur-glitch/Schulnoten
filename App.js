@@ -174,11 +174,11 @@ const INITIAL_EVENTS = [
   }
 ];
 
-// Speicher-Schlüssel auf v11 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v11';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v11';
-const READ_KEY = '@musterschule_read_articles_v11';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v11';
+// Speicher-Schlüssel auf v18 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v18';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v18';
+const READ_KEY = '@musterschule_read_articles_v18';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v18';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -213,7 +213,8 @@ const THEMES = {
     warning: '#FFAB00',
     accent: '#6366F1',
     input: '#F1F5F9',
-    border: '#E2E8F0'
+    border: '#E2E8F0',
+    todayHighlight: '#7C3AED'
   },
   dark: {
     primary: '#3B82F6',     
@@ -228,7 +229,8 @@ const THEMES = {
     warning: '#F59E0B',
     accent: '#818CF8',
     input: '#0F172A',
-    border: '#334155'
+    border: '#334155',
+    todayHighlight: '#8B5CF6'
   }
 };
 
@@ -236,6 +238,12 @@ let THEME = THEMES.light;
 
 const DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
 const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const getCurrentDayIndex = () => {
+  const jsDay = new Date().getDay();
+  if (jsDay === 0 || jsDay === 6) return -1;
+  return jsDay - 1;
+};
 
 const getPureNumber = (gradeStr) => {
   if (!gradeStr) return 0;
@@ -349,7 +357,7 @@ export default function App() {
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsRefreshing, setNewsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [newsSubTab, setNewsSubTab] = useState('news'); // 'news', 'events', 'saved'
+  const [newsSubTab, setNewsSubTab] = useState('news');
 
   useEffect(() => {
     const load = async () => {
@@ -372,7 +380,6 @@ export default function App() {
     load();
   }, []);
 
-  // RSS-Nachrichten über den JSON-Konverter laden
   const fetchRSSNews = async () => {
     try {
       setNewsLoading(true);
@@ -381,9 +388,15 @@ export default function App() {
 
       if (data && data.items) {
         const items = data.items.map((item, index) => {
-          const cleanDescription = item.description 
+          let cleanDescription = item.description 
             ? item.description.replace(/<[^>]*>/g, '').trim() 
             : '';
+
+          // Vollständige Bereinigung, falls der Text im Beschreibungstext steht
+          cleanDescription = cleanDescription
+            .replace(/Delivered by Politepaul service/gi, '')
+            .replace(/by Politepaul service/gi, '')
+            .trim();
 
           let formattedDate = 'Aktuell';
           if (item.pubDate) {
@@ -393,12 +406,17 @@ export default function App() {
             }
           }
 
+          let authorText = item.author || 'Musterschule';
+          if (authorText.toLowerCase().includes('politepaul')) {
+            authorText = 'Musterschule';
+          }
+
           return {
             id: `rss_${index}`,
             type: 'news',
             title: item.title || 'Kein Titel',
             date: formattedDate,
-            author: item.author || 'Musterschule',
+            author: authorText,
             summary: cleanDescription.length > 180 ? cleanDescription.substring(0, 180) + '...' : cleanDescription,
             link: item.link || 'https://infos.musterschule.de/'
           };
@@ -419,10 +437,19 @@ export default function App() {
       const cachedBookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
       const cachedRead = await AsyncStorage.getItem(READ_KEY);
 
-      if (cachedEvents !== null) setEvents(JSON.parse(cachedEvents));
-      else {
-        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(INITIAL_EVENTS));
-        setEvents(INITIAL_EVENTS);
+      const cleanedEvents = INITIAL_EVENTS.map(ev => {
+        let auth = ev.author;
+        if (auth && auth.toLowerCase().includes('politepaul')) {
+          auth = 'Musterschule';
+        }
+        return { ...ev, author: auth };
+      });
+
+      if (cachedEvents !== null) {
+        setEvents(JSON.parse(cachedEvents));
+      } else {
+        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(cleanedEvents));
+        setEvents(cleanedEvents);
       }
 
       if (cachedBookmarks !== null) setBookmarks(JSON.parse(cachedBookmarks));
@@ -831,6 +858,13 @@ export default function App() {
     setManualSubjectName('');
   };
 
+  const getSignWeight = (symbol) => {
+    if (symbol === '+') return 1;
+    if (symbol === '') return 2;
+    if (symbol === '-') return 3;
+    return 2;
+  };
+
   const getSubjectStats = () => {
     const stats = {};
     grades.forEach(g => {
@@ -842,15 +876,22 @@ export default function App() {
     });
     return Object.keys(stats).map(name => {
       const rawAvg = stats[name].count > 0 ? stats[name].sum / stats[name].count : 0;
+      const symbol = getMostFrequentSymbol(stats[name].raw);
       return { 
         name, 
         avg: rawAvg.toFixed(1).replace('.', ','), 
         rawAvg: rawAvg, 
-        symbol: getMostFrequentSymbol(stats[name].raw), 
+        symbol: symbol, 
+        signWeight: getSignWeight(symbol),
         color: stats[name].color, 
         trends: calculateTrends(stats[name].raw, false) 
       };
-    }).sort((a, b) => a.rawAvg - b.rawAvg);
+    }).sort((a, b) => {
+      if (a.rawAvg !== b.rawAvg) {
+        return a.rawAvg - b.rawAvg;
+      }
+      return a.signWeight - b.signWeight;
+    });
   };
 
   const getNextExams = () => {
@@ -906,10 +947,13 @@ export default function App() {
     gridRow: { borderBottomColor: THEME.border },
     gridSideHeaderCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
     gridDayHeaderCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
+    gridDayHeaderCellActive: { backgroundColor: THEME.todayHighlight, borderRightColor: THEME.border },
     gridHeaderTextSmall: { color: isDark ? THEME.textMain : THEME.secondary },
+    gridHeaderTextActive: { color: '#FFFFFF', fontWeight: '900' },
     gridSideCellSmall: { backgroundColor: isDark ? THEME.secondary : '#F8FAFC', borderRightColor: THEME.border },
     gridSideTextSmall: { color: THEME.textSecondary },
     gridCellFull: { borderRightColor: THEME.border },
+    gridCellTodayEmpty: { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(124, 58, 237, 0.06)', borderRightColor: THEME.border },
     modalContent: { backgroundColor: THEME.card },
     modalIndicator: { backgroundColor: THEME.border },
     modalTitle: { color: isDark ? THEME.textMain : THEME.secondary },
@@ -949,21 +993,26 @@ export default function App() {
   });
 
   const nextExamsList = getNextExams();
+  const todayIdx = getCurrentDayIndex();
 
   const renderNewsItem = ({ item }) => {
     const isBookmarked = bookmarks.includes(item.id);
     const isRead = readItems.includes(item.id);
 
     return (
-      <View style={[styles.newsCard, dynamicStyles.newsCard, isRead && dynamicStyles.newsReadCard]}>
+      <TouchableOpacity 
+        activeOpacity={0.9} 
+        onPress={() => openNewsItem(item)}
+        style={[styles.newsCard, dynamicStyles.newsCard, isRead && dynamicStyles.newsReadCard]}
+      >
         <View style={styles.newsCardHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
             {!isRead && <View style={styles.unreadBadgeIndicator}><Text style={styles.unreadBadgeText}>NEU</Text></View>}
             <Text style={[styles.newsDateText, isRead && dynamicStyles.newsReadText]}>
-              📅 {item.date} • {item.author}
+              📅 {item.date} {item.author ? `• ${item.author}` : ''}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => toggleBookmark(item.id)}>
+          <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}>
             <Text style={styles.newsBookmarkIcon}>{isBookmarked ? '★' : '☆'}</Text>
           </TouchableOpacity>
         </View>
@@ -972,23 +1021,18 @@ export default function App() {
         <Text style={[styles.newsCardSummary, dynamicStyles.newsCardSummary, isRead && dynamicStyles.newsReadText]}>{item.summary}</Text>
 
         <View style={[styles.newsCardFooter, dynamicStyles.newsFooterBorder]}>
-          <TouchableOpacity
-            style={styles.newsReadMoreButton}
-            onPress={() => openNewsItem(item)}
-          >
-            <Text style={[styles.newsReadMoreText, isRead && dynamicStyles.newsReadText]}>
-              {isRead ? 'Details ansehen ➔' : 'Öffnen ➔'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={[styles.newsReadMoreText, isRead && dynamicStyles.newsReadText]}>
+            {isRead ? 'Details ansehen ➔' : 'Öffnen ➔'}
+          </Text>
 
           <TouchableOpacity
             style={styles.newsShareButton}
-            onPress={() => shareNewsItem(item)}
+            onPress={(e) => { e.stopPropagation(); shareNewsItem(item); }}
           >
             <Text style={[styles.newsShareText, { color: THEME.textSecondary }]}>Teilen</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -997,7 +1041,7 @@ export default function App() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
       <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
-        {['news', 'notes', 'stats', 'timetable', 'pattern', 'backup'].map(tab => (
+        {['news', 'notes', 'stats', 'timetable', 'pattern', 'manual', 'backup'].map(tab => (
           <TouchableOpacity 
             key={tab} 
             style={[styles.navTabFixed, activeTab === tab && styles.navTabActive]} 
@@ -1005,7 +1049,7 @@ export default function App() {
           >
             <View style={styles.iconBadgeContainer}>
               <Text style={styles.navIcon}>
-                {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : '💾'}
+                {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : tab === 'manual' ? '📖' : '💾'}
               </Text>
               {tab === 'news' && totalUnreadCount > 0 && (
                 <View style={styles.mainNavBadge}>
@@ -1019,7 +1063,7 @@ export default function App() {
               adjustsFontSizeToFit 
               minimumFontScale={0.8}
             >
-              {tab === 'news' ? 'News' : tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : 'Backup'}
+              {tab === 'news' ? 'News' : tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : tab === 'manual' ? 'Handbuch' : 'Backup'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -1124,7 +1168,7 @@ export default function App() {
             </View>
           </View>
 
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer (nach Note sortiert)</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer (aufsteigend sortiert)</Text>
           {getSubjectStats().map((item, idx) => (
             <View key={idx} style={[styles.subjectStatContainer, dynamicStyles.subjectStatContainer]}>
               <View style={styles.subjectStatRow}>
@@ -1224,6 +1268,65 @@ export default function App() {
         </ScrollView>
       )}
 
+      {activeTab === 'manual' && (
+        <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>📖 Benutzerhandbuch</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Willkommen in deiner Musterschule-App! Hier erfährst du, wie du alle Funktionen optimal nutzt.</Text>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📰 1. News & Termine</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Liest automatisch die neuesten Mitteilungen der Musterschule ein.{'\n'}
+              • Über den Reiter „Termine“ siehst du anstehende Schulereignisse.{'\n'}
+              • Tippe einfach auf eine Nachricht oder einen Termin, um den Originalbeitrag zu öffnen.{'\n'}
+              • Markiere wichtige Beiträge mit dem Stern-Symbol (★), um sie unter „Favoriten“ schnell wiederzufinden.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 2. Noten & Verwaltung</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Tippe auf das Plus-Symbol (+), um eine neue Note hinzuzufügen.{'\n'}
+              • Wähle aus vordefinierten Fächern oder erstelle ein eigenes Fach mit individueller Wunschfarbe.{'\n'}
+              • Durch Antippen einer Note in der Liste kannst du diese bearbeiten oder löschen.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📊 3. Statistik & Trends</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Zeigt deinen Notendurchschnitt sowie den Trendvergleich (3, 6 und 12 Monate).{'\n'}
+              • Die Fächerliste ist aufsteigend nach Durchschnitt sortiert. Bei gleichen Noten stehen Plus-Tendenzen vor neutralen und Minus-Noten.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📅 4. Stundenplan & Plan</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Der aktuelle Wochentag wird im Raster farblich hervorgehoben.{'\n'}
+              • <Text style={{ fontWeight: '700' }}>Kurz drücken:</Text> Hausaufgaben und Prüfungsdaten für die Schulstunde eintragen.{'\n'}
+              • <Text style={{ fontWeight: '700' }}>Lang drücken:</Text> Das Fach für diesen Raster-Slot auswählen oder ändern.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>🏫 5. Muster & Vertretungsplan</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Gib oben deine Klasse (z.B. <Text style={{ fontWeight: '700' }}>5b</Text>) ein, um den offiziellen Vertretungsplan direkt in der App abzurufen.{'\n'}
+              • Schneller Zugriff auf wichtige Schul-Links wie Schulportal Hessen und Mensa.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 20 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 6. Backup & Design</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Wechsle zwischen Light- und Dark-Mode über den Backup-Reiter.{'\n'}
+              • Exportiere deine Noten und deinen Stundenplan als Code zum Sichern oder Teilen.
+            </Text>
+          </View>
+        </ScrollView>
+      )}
+
       {activeTab === 'backup' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
@@ -1293,21 +1396,51 @@ export default function App() {
 
           <View style={[styles.gridCardFull, dynamicStyles.gridCardFull]}>
             <View style={[styles.gridRow, dynamicStyles.gridRow]}>
-              <View style={[styles.gridSideHeaderCellSmall, dynamicStyles.gridSideHeaderCellSmall]}><Text style={[styles.gridHeaderTextSmall, dynamicStyles.gridHeaderTextSmall]}>Std.</Text></View>
-              {DAYS_SHORT.map(day => (
-                <View key={day} style={[styles.gridDayHeaderCellSmall, dynamicStyles.gridDayHeaderCellSmall]}><Text style={[styles.gridHeaderTextSmall, dynamicStyles.gridHeaderTextSmall]}>{day}</Text></View>
-              ))}
+              <View style={[styles.gridSideHeaderCellSmall, dynamicStyles.gridSideHeaderCellSmall]}>
+                <Text style={[styles.gridHeaderTextSmall, dynamicStyles.gridHeaderTextSmall]}>Std.</Text>
+              </View>
+              {DAYS_SHORT.map((day, dIdx) => {
+                const isToday = dIdx === todayIdx;
+                return (
+                  <View 
+                    key={day} 
+                    style={[
+                      styles.gridDayHeaderCellSmall, 
+                      dynamicStyles.gridDayHeaderCellSmall,
+                      isToday && dynamicStyles.gridDayHeaderCellActive
+                    ]}
+                  >
+                    <Text style={[
+                      styles.gridHeaderTextSmall, 
+                      dynamicStyles.gridHeaderTextSmall,
+                      isToday && dynamicStyles.gridHeaderTextActive
+                    ]}>
+                      {day}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
             <View style={{ flex: 1 }}>
               {HOURS.map(hour => (
                 <View key={hour} style={[styles.gridRowFull, dynamicStyles.gridRowFull]}>
-                  <View style={[styles.gridSideCellSmall, dynamicStyles.gridSideCellSmall]}><Text style={[styles.gridSideTextSmall, dynamicStyles.gridSideTextSmall]}>{hour}.</Text></View>
+                  <View style={[styles.gridSideCellSmall, dynamicStyles.gridSideCellSmall]}>
+                    <Text style={[styles.gridSideTextSmall, dynamicStyles.gridSideTextSmall]}>{hour}.</Text>
+                  </View>
                   {DAYS_SHORT.map((day, dIdx) => {
-                    const subjectData = timetable[`${dIdx}-${hour}`];
+                    const slotKey = `${dIdx}-${hour}`;
+                    const subjectData = timetable[slotKey];
+                    const isToday = dIdx === todayIdx;
+
                     return (
                       <TouchableOpacity 
                         key={dIdx} 
-                        style={[styles.gridCellFull, dynamicStyles.gridCellFull, subjectData && { backgroundColor: subjectData.color }]}
+                        style={[
+                          styles.gridCellFull, 
+                          dynamicStyles.gridCellFull, 
+                          subjectData && { backgroundColor: subjectData.color },
+                          !subjectData && isToday && dynamicStyles.gridCellTodayEmpty
+                        ]}
                         onPress={() => handleShortPress(dIdx, hour)}
                         onLongPress={() => handleLongPress(dIdx, hour)}
                         delayLongPress={300}
@@ -1501,7 +1634,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     flexDirection: 'column',
     flexShrink: 0,
-    width: `${100 / 6}%`
+    width: `${100 / 7}%`
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   iconBadgeContainer: {
@@ -1664,7 +1797,6 @@ const styles = StyleSheet.create({
   newsCardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
   newsCardSummary: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
   newsCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10 },
-  newsReadMoreButton: { padding: 4 },
   newsReadMoreText: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
   newsShareButton: { padding: 4, paddingHorizontal: 8 },
   newsShareText: { fontSize: 13 },

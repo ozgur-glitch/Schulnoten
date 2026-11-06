@@ -2,10 +2,10 @@
   "expo": {
     "name": "Schulnoten",
     "slug": "schulnoten",
-    "owner": "oc2003",
+    "owner": "ozg-cet",
     "extra": {
       "eas": {
-        "projectId": "c9118aea-7c42-4e11-a250-b6948cfef86d"
+        "projectId": "dc54b4b8-819f-42f1-b031-807e55988fa6"
       }
     },
     "version": "2.0.1",

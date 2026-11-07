@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   Text, View, StyleSheet, ScrollView, TouchableOpacity, 
   TextInput, Modal, SafeAreaView, FlatList, StatusBar, Dimensions, Linking, Share, Alert,
-  ActivityIndicator, RefreshControl
+  ActivityIndicator, RefreshControl, Platform
 } from 'react-native'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import * as FileSystem from 'expo-file-system';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -174,11 +176,11 @@ const INITIAL_EVENTS = [
   }
 ];
 
-// Speicher-Schlüssel auf v18 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v18';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v18';
-const READ_KEY = '@musterschule_read_articles_v18';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v18';
+// Speicher-Schlüssel auf v20 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v20';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v20';
+const READ_KEY = '@musterschule_read_articles_v20';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v20';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -343,7 +345,6 @@ export default function App() {
   const [examDateInput, setExamDateInput] = useState('');
   const [manualSubjectName, setManualSubjectName] = useState('');
   const [manualSubjectColor, setManualSubjectColor] = useState(COLOR_PALETTE[0]);
-  const [importText, setImportText] = useState('');
 
   const [vPlanLoading, setVPlanLoading] = useState(false);
   const [vPlanEntries, setVPlanEntries] = useState([]);
@@ -392,7 +393,6 @@ export default function App() {
             ? item.description.replace(/<[^>]*>/g, '').trim() 
             : '';
 
-          // Vollständige Bereinigung, falls der Text im Beschreibungstext steht
           cleanDescription = cleanDescription
             .replace(/Delivered by Politepaul service/gi, '')
             .replace(/by Politepaul service/gi, '')
@@ -756,19 +756,69 @@ export default function App() {
     }
   };
 
-  const handleExport = async () => {
-    const data = JSON.stringify({ grades, timetable });
-    try { await Share.share({ message: data }); } catch (e) { Alert.alert("Fehler", "Export fehlgeschlagen"); }
+  // --- NEUE EXAKTE BACKUP-FUNKTION (EXPORT & IMPORT ALS DATEI) ---
+  const handleExportJsonFile = async () => {
+    try {
+      const exportPayload = { grades, timetable, selectedClass, bookmarks, readItems };
+      const jsonString = JSON.stringify(exportPayload, null, 2);
+      const fileName = `musterschule_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+      if (Platform.OS === 'android' && FileSystem && FileSystem.StorageAccessFramework) {
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const uri = await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            fileName,
+            'application/json'
+          );
+          await FileSystem.writeAsStringAsync(uri, jsonString, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+          Alert.alert('Erfolg', 'Backup wurde im gewählten Ordner gespeichert!');
+        }
+      } else if (FileSystem && FileSystem.documentDirectory) {
+        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        Alert.alert('Erfolg', `Gespeichert unter:\n${fileUri}`);
+      } else {
+        Alert.alert('Fehler', 'Export wird auf diesem Gerät nicht unterstützt.');
+      }
+    } catch (e) {
+      Alert.alert('Fehler', 'Export der JSON-Datei ist fehlgeschlagen: ' + e.message);
+    }
   };
 
-  const handleImport = () => {
+  const handleImportJsonFile = async () => {
     try {
-      const parsed = JSON.parse(importText);
-      if (parsed.grades) setGrades(parsed.grades);
-      if (parsed.timetable) setTimetable(parsed.timetable);
-      Alert.alert("Erfolg", "Daten wurden importiert!");
-      setImportText('');
-    } catch (e) { Alert.alert("Fehler", "Ungültiger Code"); }
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', '*/*'],
+        copyToCacheDirectory: true
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const fileUri = result.assets[0].uri;
+        const fileContent = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        
+        const parsed = JSON.parse(fileContent);
+
+        if (parsed.grades || parsed.timetable) {
+          if (parsed.grades) setGrades(parsed.grades);
+          if (parsed.timetable) setTimetable(parsed.timetable);
+          if (parsed.selectedClass) setSelectedClass(parsed.selectedClass);
+          if (parsed.bookmarks) setBookmarks(parsed.bookmarks);
+          if (parsed.readItems) setReadItems(parsed.readItems);
+          Alert.alert("Erfolg", "Backup erfolgreich aus JSON-Datei importiert!");
+        } else {
+          Alert.alert("Fehler", "Die ausgewählte Datei hat ein ungültiges Format.");
+        }
+      }
+    } catch (e) {
+      Alert.alert("Fehler beim Import", "Die Datei konnte nicht gelesen oder verarbeitet werden.");
+    }
   };
 
   const formatInputDate = (text) => {
@@ -1154,47 +1204,71 @@ export default function App() {
 
       {activeTab === 'stats' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.statsScrollContent}>
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Gesamt-Statistik</Text>
-          <View style={[styles.averageCard, dynamicStyles.averageCard]}>
-            <Text style={[styles.averageLabel]}>Notendurchschnitt</Text>
-            <Text style={[styles.averageValue, dynamicStyles.averageValue]}>{grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}</Text>
-            <View style={styles.trendRowFull}>
+          <View style={styles.statsHeaderRow}>
+            <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginBottom: 0 }]}>Leistungsübersicht</Text>
+            <Text style={[styles.subHeader, dynamicStyles.subHeader, { marginBottom: 0, fontSize: 12 }]}>{grades.length} Noten erfasst</Text>
+          </View>
+
+          <View style={[styles.averageCardModern, dynamicStyles.averageCard]}>
+            <View style={styles.averageCardTop}>
+              <View>
+                <Text style={styles.averageLabelModern}>Gesamtdurchschnitt</Text>
+                <Text style={[styles.averageValueModern, dynamicStyles.averageValue]}>
+                  {grades.length > 0 ? `${(grades.reduce((a,c) => a + getPureNumber(c.displayGrade), 0) / grades.length).toFixed(1).replace('.', ',')}${getMostFrequentSymbol(grades)}` : "—"}
+                </Text>
+              </View>
+              <View style={styles.averageBadgeIcon}>
+                <Text style={{ fontSize: 28 }}>🏆</Text>
+              </View>
+            </View>
+
+            <View style={styles.trendRowModern}>
               {calculateTrends(grades, true).map((t, idx) => (
-                <View key={idx} style={[styles.trendBox, { backgroundColor: t.color }]}>
-                  <Text style={styles.trendBoxValue}>{t.val}{t.symbol}</Text>
-                  <Text style={styles.trendBoxStatus}>{t.label}</Text>
+                <View key={idx} style={[styles.trendPillModern, { backgroundColor: t.color + '15', borderColor: t.color, borderWidth: 1 }]}>
+                  <Text style={[styles.trendPillLabel, { color: t.color }]}>{t.label}</Text>
+                  <Text style={[styles.trendPillValue, { color: t.color }]}>{t.val}{t.symbol}</Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Einzelne Fächer (aufsteigend sortiert)</Text>
-          {getSubjectStats().map((item, idx) => (
-            <View key={idx} style={[styles.subjectStatContainer, dynamicStyles.subjectStatContainer]}>
-              <View style={styles.subjectStatRow}>
-                <View style={styles.subjectLeftPart}>
-                    <View style={[styles.subjectDot, { backgroundColor: item.color }]} />
-                    <Text style={[styles.subjectStatName, dynamicStyles.subjectStatName]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader, { marginTop: 15 }]}>Fächer im Detail</Text>
+          {getSubjectStats().map((item, idx) => {
+            const raw = item.rawAvg || 3.0;
+            const progressPercent = Math.max(0, Math.min(100, ((6 - raw) / 5) * 100));
+
+            return (
+              <View key={idx} style={[styles.subjectStatContainerModern, dynamicStyles.subjectStatContainer]}>
+                <View style={styles.subjectStatRowModern}>
+                  <View style={styles.subjectLeftPartModern}>
+                      <View style={[styles.subjectDotModern, { backgroundColor: item.color }]} />
+                      <View>
+                        <Text style={[styles.subjectStatNameModern, dynamicStyles.subjectStatName]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={{ fontSize: 11, color: THEME.textSecondary, marginTop: 1 }}>Aktueller Stand</Text>
+                      </View>
+                  </View>
+                  <View style={styles.subjectRightPartModern}>
+                      <View style={[styles.subjectGradeBadgeModern, { backgroundColor: item.color + '15', borderColor: item.color, borderWidth: 1 }]}>
+                        <Text style={[styles.subjectStatAvgNumberModern, { color: item.color }]}>{item.avg}{item.symbol}</Text>
+                      </View>
+                  </View>
                 </View>
-                <View style={styles.subjectRightPart}>
-                    <Text style={[styles.subjectStatAvgNumber, dynamicStyles.subjectStatAvgNumber]}>{item.avg}</Text>
-                    <View style={styles.symbolPlaceholder}>
-                        <Text style={[styles.subjectStatSymbol, dynamicStyles.subjectStatSymbol]}>{item.symbol}</Text>
-                    </View>
+
+                <View style={styles.gradeBarTrack}>
+                  <View style={[styles.gradeBarFill, { width: `${progressPercent}%`, backgroundColor: item.color }]} />
+                </View>
+
+                <View style={styles.subjectTrendRowModern}>
+                  {item.trends && item.trends.map((t, tIdx) => (
+                      <View key={tIdx} style={[styles.miniTrendBoxModern, { backgroundColor: t.color + '12' }]}>
+                          <Text style={[styles.miniTrendLabelModern, { color: t.color }]}>{t.label}:</Text>
+                          <Text style={[styles.miniTrendValModern, { color: t.color }]}>{t.val}{t.symbol}</Text>
+                      </View>
+                  ))}
                 </View>
               </View>
-              <View style={styles.subjectTrendRow}>
-                {item.trends && item.trends.map((t, tIdx) => (
-                    <View key={tIdx} style={[styles.miniTrendBox, { backgroundColor: t.color }]}>
-                        <View style={styles.miniTrendContent}>
-                          <Text style={styles.miniTrendLabel}>{t.label}</Text>
-                          <Text style={styles.miniTrendVal}>{t.val}{t.symbol}</Text>
-                        </View>
-                    </View>
-                ))}
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
       )}
 
@@ -1321,7 +1395,7 @@ export default function App() {
             <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 6. Backup & Design</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Wechsle zwischen Light- und Dark-Mode über den Backup-Reiter.{'\n'}
-              • Exportiere deine Noten und deinen Stundenplan als Code zum Sichern oder Teilen.
+              • Exportiere und importiere deine Daten sicher als JSON-Datei.
             </Text>
           </View>
         </ScrollView>
@@ -1337,21 +1411,15 @@ export default function App() {
             <Text style={styles.saveBtnText}>{isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}</Text>
           </TouchableOpacity>
 
-          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Sicherung</Text>
-          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Exportiere deine Daten oder stelle sie wieder her.</Text>
-          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.primary}]} onPress={handleExport}>
-            <Text style={styles.saveBtnText}>Exportieren / Teilen</Text>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Datensicherung (JSON Backup)</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Sichere deine Noten und deinen Stundenplan als Datei oder stelle sie wieder her.</Text>
+          
+          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.primary, marginBottom: 15}]} onPress={handleExportJsonFile}>
+            <Text style={styles.saveBtnText}>💾 Backup als JSON-Datei exportieren</Text>
           </TouchableOpacity>
-          <TextInput 
-            style={[styles.inputSingle, dynamicStyles.inputSingle, {marginTop: 25, height: 100, textAlignVertical: 'top'}]} 
-            multiline 
-            placeholder="Code hier einfügen zum Importieren…" 
-            placeholderTextColor={THEME.textSecondary}
-            value={importText} 
-            onChangeText={setImportText} 
-          />
-          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success, marginTop: 10}]} onPress={handleImport}>
-            <Text style={styles.saveBtnText}>Importieren</Text>
+
+          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success}]} onPress={handleImportJsonFile}>
+            <Text style={styles.saveBtnText}>📂 Backup aus JSON-Datei importieren</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -1736,27 +1804,30 @@ const styles = StyleSheet.create({
   cancelBtn: { padding: 15, alignItems: 'center' },
   statsScrollContent: { padding: 20 },
   sectionHeader: { fontSize: 20, fontWeight: '800', marginBottom: 15 },
-  averageCard: { padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 25, elevation: 1 },
-  averageLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', color: '#64748B', letterSpacing: 1, marginBottom: 4 },
-  averageValue: { fontSize: 46, fontWeight: '900' },
-  trendRowFull: { flexDirection: 'row', gap: 10, marginTop: 15, width: '100%' },
-  trendBox: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center', flex: 1 },
-  trendBoxValue: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  trendBoxStatus: { color: '#fff', fontSize: 10, opacity: 0.9, marginTop: 2, fontWeight: '600' },
-  subjectStatContainer: { padding: 16, borderRadius: 16, marginBottom: 12, elevation: 1 },
-  subjectStatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  subjectLeftPart: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
-  subjectRightPart: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: 90 },
-  subjectDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  subjectStatName: { fontSize: 16, fontWeight: '700' },
-  subjectStatAvgNumber: { fontSize: 20, fontWeight: '900', textAlign: 'right' }, 
-  symbolPlaceholder: { width: 15, marginLeft: 2 }, 
-  subjectStatSymbol: { fontSize: 18, fontWeight: '900' },
-  subjectTrendRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  miniTrendBox: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, minWidth: 60, opacity: 0.9 },
-  miniTrendContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  miniTrendLabel: { color: '#fff', fontSize: 11, fontWeight: '700', opacity: 0.8 },
-  miniTrendVal: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  statsHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  averageCardModern: { padding: 20, borderRadius: 22, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  averageCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  averageLabelModern: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', color: '#64748B', letterSpacing: 1, marginBottom: 2 },
+  averageValueModern: { fontSize: 42, fontWeight: '900' },
+  averageBadgeIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(41, 121, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  trendRowModern: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  trendPillModern: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, alignItems: 'center', flex: 1 },
+  trendPillLabel: { fontSize: 10, fontWeight: '700', opacity: 0.9 },
+  trendPillValue: { fontSize: 13, fontWeight: '900', marginTop: 1 },
+  subjectStatContainerModern: { padding: 16, borderRadius: 18, marginBottom: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+  subjectStatRowModern: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  subjectLeftPartModern: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
+  subjectRightPartModern: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  subjectDotModern: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  subjectStatNameModern: { fontSize: 16, fontWeight: '800' },
+  subjectGradeBadgeModern: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  subjectStatAvgNumberModern: { fontSize: 17, fontWeight: '900', textAlign: 'right' }, 
+  gradeBarTrack: { height: 6, backgroundColor: 'rgba(100, 116, 139, 0.12)', borderRadius: 3, marginTop: 12, overflow: 'hidden' },
+  gradeBarFill: { height: '100%', borderRadius: 3 },
+  subjectTrendRowModern: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  miniTrendBoxModern: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
+  miniTrendLabelModern: { fontSize: 11, fontWeight: '700' },
+  miniTrendValModern: { fontSize: 11, fontWeight: '900' },
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 },
   listTitle: { fontSize: 22, fontWeight: '800' },
   addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },

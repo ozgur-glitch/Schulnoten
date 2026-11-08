@@ -186,11 +186,11 @@ const INITIAL_EVENTS = [
   }
 ];
 
-// Speicher-Schlüssel auf v22 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v22';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v22';
-const READ_KEY = '@musterschule_read_articles_v22';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v22';
+// Speicher-Schlüssel auf v23 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v23';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v23';
+const READ_KEY = '@musterschule_read_articles_v23';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v23';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -200,7 +200,7 @@ const PREDEFINED_SUBJECTS = {
   'Bio': '#43A047',      
   'Ethik': '#FF9100',    
   'Kunst': '#AB47BC',    
-  'Sport': '#EAB308',    // Verbesserter, kräftigerer Gelbton für bessere Lesbarkeit
+  'Sport': '#EAB308',    
   'Musik': '#F06292',    
   'Medien': '#78909C',   
   'KL-Stunde': '#455A64', 
@@ -249,6 +249,7 @@ const THEMES = {
 let THEME = THEMES.light;
 
 const DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
+const DAYS_FULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
 const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const getCurrentDayIndex = () => {
@@ -702,6 +703,63 @@ export default function App() {
     }
   };
 
+  // --- HAUSAUFGABEN HELFER ---
+  const getHomeworkList = () => {
+    const list = [];
+    Object.keys(timetable).forEach(slotKey => {
+      const slot = timetable[slotKey];
+      if (slot && slot.homework && slot.homework.trim() !== '') {
+        const [dayIdx, hour] = slotKey.split('-').map(Number);
+        list.push({
+          slotKey,
+          dayIdx,
+          hour,
+          subject: slot.name,
+          color: slot.color || THEME.primary,
+          homework: slot.homework,
+          examDate: slot.examDate || '',
+          isDone: slot.isDone || false
+        });
+      }
+    });
+    // Sortiere nach Wochentag und Stunde
+    return list.sort((a, b) => a.dayIdx - b.dayIdx || a.hour - b.hour);
+  };
+
+  const toggleHomeworkDone = (slotKey) => {
+    const slot = timetable[slotKey];
+    if (!slot) return;
+    const updatedSlot = { ...slot, isDone: !slot.isDone };
+    setTimetable({
+      ...timetable,
+      [slotKey]: updatedSlot
+    });
+  };
+
+  // --- STUNDENPLAN EXPORT ---
+  const handleExportTimetableText = async () => {
+    try {
+      let text = "Mein Stundenplan (Musterschule):\n\n";
+      DAYS_SHORT.forEach((day, dIdx) => {
+        text += `=== ${DAYS_FULL[dIdx]} ===\n`;
+        let hasEntries = false;
+        HOURS.forEach(hour => {
+          const slotKey = `${dIdx}-${hour}`;
+          const slot = timetable[slotKey];
+          if (slot && slot.name && slot.name !== '-') {
+            hasEntries = true;
+            text += `${hour}. Std: ${slot.name}${slot.homework ? ` [HA: ${slot.homework}]` : ''}${slot.examDate ? ` (Prüfung: ${slot.examDate})` : ''}\n`;
+          }
+        });
+        if (!hasEntries) text += "Keine Fächer eingetragen\n";
+        text += "\n";
+      });
+      await Share.share({ message: text });
+    } catch (e) {
+      Alert.alert("Fehler", "Stundenplan konnte nicht exportiert werden.");
+    }
+  };
+
   const unreadNewsCount = news.filter(item => !readItems.includes(item.id)).length;
   const unreadEventsCount = events.filter(item => !isExpired(item.endDate) && !readItems.includes(item.id)).length;
   const totalUnreadCount = unreadNewsCount + unreadEventsCount;
@@ -1120,38 +1178,52 @@ export default function App() {
     );
   };
 
+  const allTabs = [
+    { key: 'news', label: 'News', icon: '📰', badge: totalUnreadCount },
+    { key: 'notes', label: 'Noten', icon: '📝' },
+    { key: 'stats', label: 'Statistik', icon: '📊' },
+    { key: 'timetable', label: 'Plan', icon: '📅' },
+    { key: 'homework', label: 'Hausaufgaben', icon: '📚' },
+    { key: 'pattern', label: 'Muster', icon: '🏫' },
+    { key: 'widgets', label: 'Widgets', icon: '📱' },
+    { key: 'manual', label: 'Handbuch', icon: '📖' },
+    { key: 'backup', label: 'Backup', icon: '💾' },
+  ];
+
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
-      <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
-        {['news', 'notes', 'stats', 'timetable', 'pattern', 'manual', 'backup'].map(tab => (
+      {/* Horizontal Scrollable Navigation Header */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}
+        contentContainerStyle={styles.navHeaderContainerStyle}
+      >
+        {allTabs.map(tab => (
           <TouchableOpacity 
-            key={tab} 
-            style={[styles.navTabFixed, activeTab === tab && styles.navTabActive]} 
-            onPress={() => setActiveTab(tab)}
+            key={tab.key} 
+            style={[styles.navTabFixed, activeTab === tab.key && styles.navTabActive]} 
+            onPress={() => setActiveTab(tab.key)}
           >
             <View style={styles.iconBadgeContainer}>
-              <Text style={styles.navIcon}>
-                {tab === 'news' ? '📰' : tab === 'notes' ? '📝' : tab === 'stats' ? '📊' : tab === 'timetable' ? '📅' : tab === 'pattern' ? '🏫' : tab === 'manual' ? '📖' : '💾'}
-              </Text>
-              {tab === 'news' && totalUnreadCount > 0 && (
+              <Text style={styles.navIcon}>{tab.icon}</Text>
+              {tab.badge > 0 && (
                 <View style={styles.mainNavBadge}>
-                  <Text style={styles.mainNavBadgeText}>{totalUnreadCount}</Text>
+                  <Text style={styles.mainNavBadgeText}>{tab.badge}</Text>
                 </View>
               )}
             </View>
             <Text 
-              style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab && dynamicStyles.navTabTextActive]} 
-              numberOfLines={1} 
-              adjustsFontSizeToFit 
-              minimumFontScale={0.8}
+              style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab.key && dynamicStyles.navTabTextActive]} 
+              numberOfLines={1}
             >
-              {tab === 'news' ? 'News' : tab === 'notes' ? 'Noten' : tab === 'stats' ? 'Statistik' : tab === 'timetable' ? 'Plan' : tab === 'pattern' ? 'Muster' : tab === 'manual' ? 'Handbuch' : 'Backup'}
+              {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
-      </View> 
+      </ScrollView> 
 
       {activeTab === 'news' && (
         <View style={{ flex: 1 }}>
@@ -1282,7 +1354,6 @@ export default function App() {
                       </View>
                   </View>
                   <View style={styles.subjectRightPartModern}>
-                      {/* Verbesserter, kontrastreicher Noten-Badge mit starkem Hintergrund & Rand */}
                       <View style={[styles.subjectGradeBadgeModern, { backgroundColor: item.color + '25', borderColor: item.color, borderWidth: 2 }]}>
                         <Text style={[styles.subjectStatAvgNumberModern, { color: THEME.textMain }]}>{item.avg}{item.symbol}</Text>
                       </View>
@@ -1304,6 +1375,104 @@ export default function App() {
               </View>
             );
           })}
+        </ScrollView>
+      )}
+
+      {/* --- NEUER HAUSAUFGABEN-TAB --- */}
+      {activeTab === 'homework' && (
+        <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>📚 Hausaufgaben-Übersicht</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Alle eingetragenen Aufgaben aus deinem Stundenplan. Hake erledigte Aufgaben einfach ab!</Text>
+
+          {getHomeworkList().length === 0 ? (
+            <View style={[styles.linkCard, dynamicStyles.linkCard, { justifyContent: 'center', padding: 30 }]}>
+              <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { textAlign: 'center', fontStyle: 'italic' }]}>
+                Keine Hausaufgaben eingetragen.{'\n'}Tippe im Stundenplan auf eine Stunde, um Hausaufgaben hinzuzufügen.
+              </Text>
+            </View>
+          ) : (
+            getHomeworkList().map((item, idx) => (
+              <TouchableOpacity 
+                key={idx}
+                style={[
+                  styles.linkCard, 
+                  dynamicStyles.linkCard, 
+                  { 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    borderLeftWidth: 6, 
+                    borderLeftColor: item.color,
+                    opacity: item.isDone ? 0.6 : 1 
+                  }
+                ]}
+                activeOpacity={0.8}
+                onPress={() => toggleHomeworkDone(item.slotKey)}
+              >
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { fontSize: 15, marginBottom: 0, textDecorationLine: item.isDone ? 'line-through' : 'none' }]}>
+                      {item.subject}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: THEME.textSecondary, marginLeft: 8, fontWeight: '700' }}>
+                      ({DAYS_FULL[item.dayIdx]}, {item.hour}. Std)
+                    </Text>
+                  </View>
+                  <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { fontSize: 14, color: THEME.textMain, textDecorationLine: item.isDone ? 'line-through' : 'none' }]}>
+                    {item.homework}
+                  </Text>
+                  {item.examDate ? (
+                    <Text style={{ fontSize: 11, color: THEME.danger, marginTop: 4, fontWeight: '700' }}>
+                      📅 Prüfung am: {item.examDate}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View style={[styles.checkboxContainer, { borderColor: item.isDone ? THEME.success : THEME.border, backgroundColor: item.isDone ? THEME.success : 'transparent' }]}>
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{item.isDone ? '✓' : ''}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {/* --- NEUER WIDGETS & EXPORT TAB --- */}
+      {activeTab === 'widgets' && (
+        <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>📱 Widgets & Schnellübersicht</Text>
+          <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Hier siehst du eine Widget-Vorschau deines aktuellen Tagesplans und kannst deinen Stundenplan teilen.</Text>
+
+          <View style={[styles.averageCardModern, dynamicStyles.averageCard, { marginBottom: 25 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: THEME.primary }}>📌 Homescreen-Widget (Vorschau)</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.textSecondary }}>{todayIdx >= 0 ? DAYS_FULL[todayIdx] : 'Wochenende'}</Text>
+            </View>
+
+            {todayIdx < 0 ? (
+              <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { fontStyle: 'italic', paddingVertical: 10 }]}>Heute ist Wochenende – keine Schule!</Text>
+            ) : (
+              HOURS.slice(0, 6).map(hour => {
+                const slotKey = `${todayIdx}-${hour}`;
+                const slot = timetable[slotKey];
+                if (!slot || !slot.name || slot.name === '-') return null;
+                return (
+                  <View key={hour} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: THEME.border }}>
+                    <View style={{ width: 45, paddingVertical: 2, borderRadius: 6, backgroundColor: slot.color + '20', alignItems: 'center', marginRight: 10 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: slot.color }}>{hour}. Std</Text>
+                    </View>
+                    <Text style={{ flex: 1, fontWeight: '700', fontSize: 14, color: THEME.textMain }} numberOfLines={1}>{slot.name}</Text>
+                    {slot.homework ? <Text style={{ fontSize: 12, marginRight: 6 }}>📝</Text> : null}
+                    {slot.examDate ? <Text style={{ fontSize: 12 }}>📅</Text> : null}
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>📤 Stundenplan Exportieren</Text>
+          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: THEME.primary, marginBottom: 15 }]} onPress={handleExportTimetableText}>
+            <Text style={styles.saveBtnText}>📋 Stundenplan als Text teilen</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -1387,9 +1556,8 @@ export default function App() {
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Liest automatisch die neuesten Mitteilungen der Musterschule ein.{'\n'}
               • Über den Reiter „Termine“ siehst du anstehende Schulereignisse.{'\n'}
-              • Tippe einfach auf eine Nachricht oder einen Termin, um den Originalbeitrag zu öffnen.{'\n'}
-              • Gelesene Beiträge können über den Button unten am Beitrag wieder als „ungelesen“ markiert werden.{'\n'}
-              • Markiere wichtige Beiträge mit dem Stern-Symbol (★), um sie unter „Favoriten“ schnell wiederzufinden.
+              • Gelesene Beiträge können über den Button wieder als „ungelesen“ markiert werden.{'\n'}
+              • Markiere wichtige Beiträge mit dem Stern-Symbol (★) für deine Favoriten.
             </Text>
           </View>
 
@@ -1397,8 +1565,7 @@ export default function App() {
             <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 2. Noten & Verwaltung</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Tippe auf das Plus-Symbol (+), um eine neue Note hinzuzufügen.{'\n'}
-              • Wähle aus vordefinierten Fächern oder erstelle ein eigenes Fach mit individueller Wunschfarbe.{'\n'}
-              • Durch Antippen einer Note in der Liste kannst du diese bearbeiten oder löschen.
+              • Wähle aus vordefinierten Fächern oder erstelle ein eigenes Fach mit Wunschfarbe.
             </Text>
           </View>
 
@@ -1406,32 +1573,44 @@ export default function App() {
             <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📊 3. Statistik & Trends</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Zeigt deinen Notendurchschnitt sowie den Trendvergleich (3, 6 und 12 Monate).{'\n'}
-              • Die Fächerliste ist aufsteigend nach Durchschnitt sortiert. Die Noten-Badges sind kontrastreich umrandet für beste Lesbarkeit.
+              • Die Noten-Badges sind kontrastreich umrandet für beste Lesbarkeit.
             </Text>
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
             <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📅 4. Stundenplan & Plan</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
-              • Der aktuelle Wochentag wird im Raster farblich hervorgehoben.{'\n'}
               • <Text style={{ fontWeight: '700' }}>Kurz drücken:</Text> Hausaufgaben und Prüfungsdaten für die Schulstunde eintragen.{'\n'}
-              • <Text style={{ fontWeight: '700' }}>Lang drücken:</Text> Das Fach für diesen Raster-Slot auswählen oder ändern.
+              • <Text style={{ fontWeight: '700' }}>Lang drücken:</Text> Das Fach für diesen Raster-Slot auswählen.
             </Text>
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>🏫 5. Muster & Vertretungsplan</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📚 5. Hausaufgaben-Übersicht</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
-              • Gib oben deine Klasse (z.B. <Text style={{ fontWeight: '700' }}>5b</Text>) ein, um den offiziellen Vertretungsplan direkt in der App abzurufen.{'\n'}
-              • Schneller Zugriff auf wichtige Schul-Links wie Schulportal Hessen und Mensa.
+              • Listet alle offenen Hausaufgaben aus deinem Stundenplan übersichtlich auf.{'\n'}
+              • Mit einem Klick auf die Aufgabe kannst du sie abhaken (erledigt).
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>🏫 6. Muster & Vertretungsplan</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Gib oben deine Klasse (z.B. <Text style={{ fontWeight: '700' }}>5b</Text>) ein, um den Vertretungsplan abzurufen.
+            </Text>
+          </View>
+
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📱 7. Widgets & Export</Text>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
+              • Zeigt eine Live-Vorschau deines heutigen Tagesplans und erlaubt das Teilen des Stundenplans.
             </Text>
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 20 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 6. Backup & Design</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 8. Backup & Design</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
-              • Wechsle zwischen Light- und Dark-Mode über den Backup-Reiter.{'\n'}
-              • Exportiere und importiere deine Daten sicher als JSON-Datei.
+              • Wechsle zwischen Light- und Dark-Mode und sichere deine Daten als JSON-Datei.
             </Text>
           </View>
         </ScrollView>
@@ -1733,22 +1912,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   tabContent: { flex: 1 },
   navHeaderFixed: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
     paddingVertical: 10, 
     paddingHorizontal: 4
+  },
+  navHeaderContainerStyle: {
+    alignItems: 'center',
+    gap: 4
   },
   navTabFixed: { 
     alignItems: 'center', 
     justifyContent: 'center', 
     paddingVertical: 8, 
-    paddingHorizontal: 2,
+    paddingHorizontal: 12,
     borderRadius: 12, 
     flexDirection: 'column',
-    flexShrink: 0,
-    width: `${100 / 7}%`
+    minWidth: 70
   },
-  navTabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  navTabActive: { backgroundColor: 'rgba(255,255,255,0.15)' },
   iconBadgeContainer: {
     position: 'relative',
     alignItems: 'center',
@@ -1772,7 +1952,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
   },
-  navTabText: { fontSize: 10, fontWeight: '700', textAlign: 'center', width: '100%' },
+  navTabText: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
   subHeader: { marginBottom: 25, fontSize: 14 },
   linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
   linkIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
@@ -1918,4 +2098,5 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 40 },
   loadingText: { marginTop: 10 },
   emptyText: { fontSize: 15, textAlign: 'center' },
+  checkboxContainer: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
 });

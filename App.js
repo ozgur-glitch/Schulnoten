@@ -173,14 +173,24 @@ const INITIAL_EVENTS = [
     author: 'Gesetzlicher Feiertag',
     summary: 'Kein Unterricht am Maifeiertag.',
     link: 'https://infos.musterschule.de/?page_id=394810'
+  },
+  {
+    id: 'e17',
+    type: 'event',
+    title: 'Beweglicher Ferientag',
+    date: '7. Mai 2027',
+    endDate: '2027-05-07',
+    author: 'Schulferien',
+    summary: 'Beweglicher Ferientag nach Christi Himmelfahrt / Maifeiertag.',
+    link: 'https://infos.musterschule.de/?page_id=394810'
   }
 ];
 
-// Speicher-Schlüssel auf v20 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v20';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v20';
-const READ_KEY = '@musterschule_read_articles_v20';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v20';
+// Speicher-Schlüssel auf v22 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v22';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v22';
+const READ_KEY = '@musterschule_read_articles_v22';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v22';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -190,7 +200,7 @@ const PREDEFINED_SUBJECTS = {
   'Bio': '#43A047',      
   'Ethik': '#FF9100',    
   'Kunst': '#AB47BC',    
-  'Sport': '#FDD835',    
+  'Sport': '#EAB308',    // Verbesserter, kräftigerer Gelbton für bessere Lesbarkeit
   'Musik': '#F06292',    
   'Medien': '#78909C',   
   'KL-Stunde': '#455A64', 
@@ -198,7 +208,7 @@ const PREDEFINED_SUBJECTS = {
 }; 
 
 const COLOR_PALETTE = [
-  '#FF5252', '#FF9100', '#FDD835', '#43A047', '#00B8D4', '#2979FF', '#5C6BC0', '#AB47BC', '#F06292', '#455A64'
+  '#FF5252', '#FF9100', '#EAB308', '#43A047', '#00B8D4', '#2979FF', '#5C6BC0', '#AB47BC', '#F06292', '#455A64'
 ];
 
 const THEMES = {
@@ -653,6 +663,21 @@ export default function App() {
     }
   };
 
+  const toggleReadStatus = async (id) => {
+    try {
+      let updatedRead;
+      if (readItems.includes(id)) {
+        updatedRead = readItems.filter(rId => rId !== id);
+      } else {
+        updatedRead = [...readItems, id];
+      }
+      setReadItems(updatedRead);
+      await AsyncStorage.setItem(READ_KEY, JSON.stringify(updatedRead));
+    } catch (e) {
+      console.error('Fehler beim Ändern des Gelesen-Status', e);
+    }
+  };
+
   const openNewsItem = async (item) => {
     await markAsRead(item.id);
     try {
@@ -756,7 +781,6 @@ export default function App() {
     }
   };
 
-  // --- NEUE EXAKTE BACKUP-FUNKTION (EXPORT & IMPORT ALS DATEI) ---
   const handleExportJsonFile = async () => {
     try {
       const exportPayload = { grades, timetable, selectedClass, bookmarks, readItems };
@@ -1075,12 +1099,22 @@ export default function App() {
             {isRead ? 'Details ansehen ➔' : 'Öffnen ➔'}
           </Text>
 
-          <TouchableOpacity
-            style={styles.newsShareButton}
-            onPress={(e) => { e.stopPropagation(); shareNewsItem(item); }}
-          >
-            <Text style={[styles.newsShareText, { color: THEME.textSecondary }]}>Teilen</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {isRead && (
+              <TouchableOpacity
+                style={styles.newsShareButton}
+                onPress={(e) => { e.stopPropagation(); toggleReadStatus(item.id); }}
+              >
+                <Text style={{ fontSize: 12, color: THEME.primary, fontWeight: '700' }}>Als ungelesen</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.newsShareButton}
+              onPress={(e) => { e.stopPropagation(); shareNewsItem(item); }}
+            >
+              <Text style={[styles.newsShareText, { color: THEME.textSecondary }]}>Teilen</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -1248,8 +1282,9 @@ export default function App() {
                       </View>
                   </View>
                   <View style={styles.subjectRightPartModern}>
-                      <View style={[styles.subjectGradeBadgeModern, { backgroundColor: item.color + '15', borderColor: item.color, borderWidth: 1 }]}>
-                        <Text style={[styles.subjectStatAvgNumberModern, { color: item.color }]}>{item.avg}{item.symbol}</Text>
+                      {/* Verbesserter, kontrastreicher Noten-Badge mit starkem Hintergrund & Rand */}
+                      <View style={[styles.subjectGradeBadgeModern, { backgroundColor: item.color + '25', borderColor: item.color, borderWidth: 2 }]}>
+                        <Text style={[styles.subjectStatAvgNumberModern, { color: THEME.textMain }]}>{item.avg}{item.symbol}</Text>
                       </View>
                   </View>
                 </View>
@@ -1260,7 +1295,7 @@ export default function App() {
 
                 <View style={styles.subjectTrendRowModern}>
                   {item.trends && item.trends.map((t, tIdx) => (
-                      <View key={tIdx} style={[styles.miniTrendBoxModern, { backgroundColor: t.color + '12' }]}>
+                      <View key={tIdx} style={[styles.miniTrendBoxModern, { backgroundColor: t.color + '15', borderColor: t.color, borderWidth: 1 }]}>
                           <Text style={[styles.miniTrendLabelModern, { color: t.color }]}>{t.label}:</Text>
                           <Text style={[styles.miniTrendValModern, { color: t.color }]}>{t.val}{t.symbol}</Text>
                       </View>
@@ -1353,6 +1388,7 @@ export default function App() {
               • Liest automatisch die neuesten Mitteilungen der Musterschule ein.{'\n'}
               • Über den Reiter „Termine“ siehst du anstehende Schulereignisse.{'\n'}
               • Tippe einfach auf eine Nachricht oder einen Termin, um den Originalbeitrag zu öffnen.{'\n'}
+              • Gelesene Beiträge können über den Button unten am Beitrag wieder als „ungelesen“ markiert werden.{'\n'}
               • Markiere wichtige Beiträge mit dem Stern-Symbol (★), um sie unter „Favoriten“ schnell wiederzufinden.
             </Text>
           </View>
@@ -1370,7 +1406,7 @@ export default function App() {
             <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📊 3. Statistik & Trends</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Zeigt deinen Notendurchschnitt sowie den Trendvergleich (3, 6 und 12 Monate).{'\n'}
-              • Die Fächerliste ist aufsteigend nach Durchschnitt sortiert. Bei gleichen Noten stehen Plus-Tendenzen vor neutralen und Minus-Noten.
+              • Die Fächerliste ist aufsteigend nach Durchschnitt sortiert. Die Noten-Badges sind kontrastreich umrandet für beste Lesbarkeit.
             </Text>
           </View>
 
@@ -1405,7 +1441,7 @@ export default function App() {
         <ScrollView style={styles.tabContent} contentContainerStyle={{ padding: 20 }}>
           <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>Erscheinungsbild</Text>
           <TouchableOpacity 
-            style={[styles.saveBtn, {marginBottom: 30, backgroundColor: isDark ? THEMES.light.primary : THEMES.dark.secondary}]} 
+            style={[styles.saveBtn, {marginBottom: 20, backgroundColor: isDark ? THEMES.light.primary : THEMES.dark.secondary}]} 
             onPress={() => setIsDark(!isDark)}
           >
             <Text style={styles.saveBtnText}>{isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}</Text>
@@ -1418,9 +1454,17 @@ export default function App() {
             <Text style={styles.saveBtnText}>💾 Backup als JSON-Datei exportieren</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success}]} onPress={handleImportJsonFile}>
+          <TouchableOpacity style={[styles.saveBtn, {backgroundColor: THEME.success, marginBottom: 30}]} onPress={handleImportJsonFile}>
             <Text style={styles.saveBtnText}>📂 Backup aus JSON-Datei importieren</Text>
           </TouchableOpacity>
+
+          <Text style={[styles.sectionHeader, dynamicStyles.sectionHeader]}>👨‍💻 Entwickler-Info</Text>
+          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 22, color: THEME.textMain, fontSize: 13 }]}>
+              <Text style={{ fontWeight: '700' }}>Entwickler:</Text> Özgür Cetin{"\n"}
+              <Text style={{ fontWeight: '700' }}>E-Mail:</Text> ozgur.cetin@web.de
+            </Text>
+          </View>
         </ScrollView>
       )}
 
@@ -1820,12 +1864,12 @@ const styles = StyleSheet.create({
   subjectRightPartModern: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   subjectDotModern: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   subjectStatNameModern: { fontSize: 16, fontWeight: '800' },
-  subjectGradeBadgeModern: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  subjectGradeBadgeModern: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   subjectStatAvgNumberModern: { fontSize: 17, fontWeight: '900', textAlign: 'right' }, 
   gradeBarTrack: { height: 6, backgroundColor: 'rgba(100, 116, 139, 0.12)', borderRadius: 3, marginTop: 12, overflow: 'hidden' },
   gradeBarFill: { height: '100%', borderRadius: 3 },
   subjectTrendRowModern: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  miniTrendBoxModern: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
+  miniTrendBoxModern: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, gap: 4 },
   miniTrendLabelModern: { fontSize: 11, fontWeight: '700' },
   miniTrendValModern: { fontSize: 11, fontWeight: '900' },
   listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 },

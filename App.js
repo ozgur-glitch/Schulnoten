@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Text, View, StyleSheet, ScrollView, TouchableOpacity, 
   TextInput, Modal, SafeAreaView, FlatList, StatusBar, Dimensions, Linking, Share, Alert,
-  ActivityIndicator, RefreshControl, Platform
+  ActivityIndicator, Platform
 } from 'react-native'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import * as FileSystem from 'expo-file-system';
@@ -10,187 +10,11 @@ import * as DocumentPicker from 'expo-document-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Über den JSON-Proxy wird der XML-Feed sauber und ohne Blockaden geladen
-const RSS_API_URL = 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fpolitepaul.com%2Ffd%2FRmQPVRxHgqdI.xml';
-
-const INITIAL_EVENTS = [
-  {
-    id: 'e1',
-    type: 'event',
-    title: 'Berufsinformationstag BIT',
-    date: '14. November 2026',
-    endDate: '2026-11-14',
-    author: '10:00 – 13:00 Uhr',
-    summary: 'Berufsinformationstag BIT für Schülerinnen und Schüler der E-Phase.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e2',
-    type: 'event',
-    title: 'Solistenpodium',
-    date: '18. November 2026',
-    endDate: '2026-11-18',
-    author: '19:30 – 21:30 Uhr',
-    summary: 'Musikalisches Solistenpodium.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e3',
-    type: 'event',
-    title: 'Mathe-Atelier',
-    date: '24. November 2026',
-    endDate: '2026-11-24',
-    author: '09:30 – 12:00 Uhr',
-    summary: 'Offenes Mathe-Atelier.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e4',
-    type: 'event',
-    title: 'Musikalischer Nachmittag für Grundschüler',
-    date: '10. Dezember 2026',
-    endDate: '2026-12-10',
-    author: '15:00 – 17:00 Uhr',
-    summary: 'Einladung für interessierte Grundschülerinnen und Grundschüler.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e5',
-    type: 'event',
-    title: 'Schnuppernachmittag Französisch',
-    date: '21. Dezember 2026',
-    endDate: '2026-12-21',
-    author: '16:00 – 18:00 Uhr',
-    summary: 'Schnuppernachmittag Französisch in der Aula.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e6',
-    type: 'event',
-    title: 'Weihnachtsferien',
-    date: 'Bis 12. Januar 2027',
-    endDate: '2027-01-12',
-    author: 'Schulferien',
-    summary: 'Weihnachtsferien in Hessen.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e7',
-    type: 'event',
-    title: 'Tag der offenen Tür',
-    date: '16. Januar 2027',
-    endDate: '2027-01-16',
-    author: '09:00 – 12:30 Uhr',
-    summary: 'Tag der offenen Tür an der Musterschule.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e8',
-    type: 'event',
-    title: 'Musikarbeitstage in Rothenfels',
-    date: 'Bis 22. Januar 2027',
-    endDate: '2027-01-22',
-    author: 'Klassenfahrt / Projekt',
-    summary: 'Traditionelle Musikarbeitstage auf Burg Rothenfels.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e9',
-    type: 'event',
-    title: 'Januarkonzerte',
-    date: 'Bis 28. Januar 2027',
-    endDate: '2027-01-28',
-    author: 'Abendveranstaltung',
-    summary: 'Die jährlichen Januarkonzerte der Musterschule.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e10',
-    type: 'event',
-    title: 'Oberstufenskifahrt Q1/2',
-    date: '29. Januar – 2. Februar 2027',
-    endDate: '2027-02-02',
-    author: '12:00 – 20:00 Uhr',
-    summary: 'Skifahrt der Q1/Q2 Stufe.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e11',
-    type: 'event',
-    title: 'Musikinstrumente einfach ausprobieren',
-    date: '17. Februar 2027',
-    endDate: '2027-02-17',
-    author: '15:00 – 16:30 Uhr',
-    summary: 'Instrumenten-Schnuppern.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e12',
-    type: 'event',
-    title: 'Elternabend Suchprävention (SEB)',
-    date: '18. Februar 2027',
-    endDate: '2027-02-18',
-    author: '19:00 – 20:30 Uhr',
-    summary: 'Elternabend zum Thema Suchtprävention.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e13',
-    type: 'event',
-    title: 'DELF schriftliche Prüfung',
-    date: '13. März 2027',
-    endDate: '2027-03-13',
-    author: '09:00 – 16:00 Uhr',
-    summary: 'Schriftliche DELF-Prüfungen an der Musterschule (B2: 09:00 Uhr / B1: 13:05 Uhr).',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e14',
-    type: 'event',
-    title: 'WerWillDerKann',
-    date: '15. März 2027',
-    endDate: '2027-03-15',
-    author: '19:00 – 20:00 Uhr',
-    summary: 'Veranstaltungsreihe WerWillDerKann in der Aula.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e15',
-    type: 'event',
-    title: 'Osterferien',
-    date: '22. März – 2. April 2027',
-    endDate: '2027-04-02',
-    author: 'Schulferien',
-    summary: 'Osterferien in Hessen.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e16',
-    type: 'event',
-    title: 'Maifeiertag',
-    date: '1. Mai 2027',
-    endDate: '2027-05-01',
-    author: 'Gesetzlicher Feiertag',
-    summary: 'Kein Unterricht am Maifeiertag.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  },
-  {
-    id: 'e17',
-    type: 'event',
-    title: 'Beweglicher Ferientag',
-    date: '7. Mai 2027',
-    endDate: '2027-05-07',
-    author: 'Schulferien',
-    summary: 'Beweglicher Ferientag nach Christi Himmelfahrt / Maifeiertag.',
-    link: 'https://infos.musterschule.de/?page_id=394810'
-  }
-];
-
-// Speicher-Schlüssel auf v24 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v24';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v24';
-const READ_KEY = '@musterschule_read_articles_v24';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v24';
+// Speicher-Schlüssel auf v25 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v25';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v25';
+const READ_KEY = '@musterschule_read_articles_v25';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v25';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -340,7 +164,8 @@ export default function App() {
 
   THEME = isDark ? THEMES.dark : THEMES.light;
 
-  const [activeTab, setActiveTab] = useState('pattern'); 
+  // Start-Tab direkt auf 'notes' (Noten) gesetzt, da News entfernt wurden
+  const [activeTab, setActiveTab] = useState('notes'); 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathe');
@@ -357,22 +182,10 @@ export default function App() {
   const [manualSubjectName, setManualSubjectName] = useState('');
   const [manualSubjectColor, setManualSubjectColor] = useState(COLOR_PALETTE[0]);
 
-  // Modal für Hausaufgaben-Übersicht direkt im Stundenplan
   const [homeworkModalVisible, setHomeworkModalVisible] = useState(false);
 
   const [vPlanLoading, setVPlanLoading] = useState(false);
   const [vPlanEntries, setVPlanEntries] = useState([]);
-
-  // --- RSS NEWS & TERMINE STATE ---
-  const [news, setNews] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [filteredNewsData, setFilteredNewsData] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]);
-  const [readItems, setReadItems] = useState([]);
-  const [newsLoading, setNewsLoading] = useState(true);
-  const [newsRefreshing, setNewsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [newsSubTab, setNewsSubTab] = useState('news');
 
   useEffect(() => {
     const load = async () => {
@@ -386,98 +199,12 @@ export default function App() {
         if (d) setIsDark(JSON.parse(d));
         if (c) setSelectedClass(c);
 
-        await fetchRSSNews();
-        await loadEventsAndUserData();
         await checkAndAutoFetch();
       } catch (e) { console.log("Fehler beim Laden", e); }
       setIsLoaded(true);
     };
     load();
   }, []);
-
-  const fetchRSSNews = async () => {
-    try {
-      setNewsLoading(true);
-      const response = await fetch(RSS_API_URL);
-      const data = await response.json();
-
-      if (data && data.items) {
-        const items = data.items.map((item, index) => {
-          let cleanDescription = item.description 
-            ? item.description.replace(/<[^>]*>/g, '').trim() 
-            : '';
-
-          cleanDescription = cleanDescription
-            .replace(/Delivered by Politepaul service/gi, '')
-            .replace(/by Politepaul service/gi, '')
-            .trim();
-
-          let formattedDate = 'Aktuell';
-          if (item.pubDate) {
-            const d = new Date(item.pubDate);
-            if (!isNaN(d.getTime())) {
-              formattedDate = d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
-            }
-          }
-
-          let authorText = item.author || 'Musterschule';
-          if (authorText.toLowerCase().includes('politepaul')) {
-            authorText = 'Musterschule';
-          }
-
-          return {
-            id: `rss_${index}`,
-            type: 'news',
-            title: item.title || 'Kein Titel',
-            date: formattedDate,
-            author: authorText,
-            summary: cleanDescription.length > 180 ? cleanDescription.substring(0, 180) + '...' : cleanDescription,
-            link: item.link || 'https://infos.musterschule.de/'
-          };
-        });
-
-        setNews(items);
-      }
-    } catch (e) {
-      console.log("Fehler beim Abrufen des RSS-Feeds:", e);
-    } finally {
-      setNewsLoading(false);
-    }
-  };
-
-  const loadEventsAndUserData = async () => {
-    try {
-      const cachedEvents = await AsyncStorage.getItem(STORAGE_EVENTS_KEY);
-      const cachedBookmarks = await AsyncStorage.getItem(BOOKMARKS_KEY);
-      const cachedRead = await AsyncStorage.getItem(READ_KEY);
-
-      const cleanedEvents = INITIAL_EVENTS.map(ev => {
-        let auth = ev.author;
-        if (auth && auth.toLowerCase().includes('politepaul')) {
-          auth = 'Musterschule';
-        }
-        return { ...ev, author: auth };
-      });
-
-      if (cachedEvents !== null) {
-        setEvents(JSON.parse(cachedEvents));
-      } else {
-        await AsyncStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(cleanedEvents));
-        setEvents(cleanedEvents);
-      }
-
-      if (cachedBookmarks !== null) setBookmarks(JSON.parse(cachedBookmarks));
-      if (cachedRead !== null) setReadItems(JSON.parse(cachedRead));
-    } catch (e) {
-      console.log('Fehler beim Laden der Events', e);
-    }
-  };
-
-  const onNewsRefresh = async () => {
-    setNewsRefreshing(true);
-    await fetchRSSNews();
-    setNewsRefreshing(false);
-  };
 
   const checkAndAutoFetch = async () => {
     try {
@@ -569,10 +296,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    filterNewsData();
-  }, [searchQuery, news, events, bookmarks, newsSubTab]);
-
-  useEffect(() => {
     if (isLoaded) {
       fetchVPlanData();
     }
@@ -601,110 +324,6 @@ export default function App() {
       AsyncStorage.setItem('selected_class', selectedClass);
     }
   }, [selectedClass, isLoaded]);
-
-  const isExpired = (endDateStr) => {
-    if (!endDateStr) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const parts = endDateStr.split('-');
-    if (parts.length === 3) {
-      const [year, month, day] = parts.map(Number);
-      const eventDate = new Date(year, month - 1, day);
-      return eventDate < today;
-    }
-    const eventDate = new Date(endDateStr);
-    return eventDate < today;
-  };
-
-  const filterNewsData = () => {
-    let source = [];
-    if (newsSubTab === 'news') {
-      source = news;
-    } else if (newsSubTab === 'events') {
-      source = events.filter(item => !isExpired(item.endDate));
-    } else if (newsSubTab === 'saved') {
-      const allItems = [...news, ...events];
-      source = allItems.filter(item => bookmarks.includes(item.id));
-    }
-
-    if (searchQuery.trim() !== '') {
-      source = source.filter(
-        item =>
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.date.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    setFilteredNewsData(source);
-  };
-
-  const toggleBookmark = async (id) => {
-    try {
-      let updatedBookmarks;
-      if (bookmarks.includes(id)) {
-        updatedBookmarks = bookmarks.filter(bId => bId !== id);
-      } else {
-        updatedBookmarks = [...bookmarks, id];
-      }
-      setBookmarks(updatedBookmarks);
-      await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updatedBookmarks));
-    } catch (e) {
-      Alert.alert('Fehler', 'Lesezeichen konnte nicht gespeichert werden.');
-    }
-  };
-
-  const markAsRead = async (id) => {
-    if (!readItems.includes(id)) {
-      try {
-        const updatedRead = [...readItems, id];
-        setReadItems(updatedRead);
-        await AsyncStorage.setItem(READ_KEY, JSON.stringify(updatedRead));
-      } catch (e) {
-        console.error('Fehler beim Speichern des Gelesen-Status', e);
-      }
-    }
-  };
-
-  const toggleReadStatus = async (id) => {
-    try {
-      let updatedRead;
-      if (readItems.includes(id)) {
-        updatedRead = readItems.filter(rId => rId !== id);
-      } else {
-        updatedRead = [...readItems, id];
-      }
-      setReadItems(updatedRead);
-      await AsyncStorage.setItem(READ_KEY, JSON.stringify(updatedRead));
-    } catch (e) {
-      console.error('Fehler beim Ändern des Gelesen-Status', e);
-    }
-  };
-
-  const openNewsItem = async (item) => {
-    await markAsRead(item.id);
-    try {
-      const supported = await Linking.canOpenURL(item.link);
-      if (supported) {
-        await Linking.openURL(item.link);
-      } else {
-        Alert.alert('Fehler', 'Link kann nicht geöffnet werden.');
-      }
-    } catch (error) {
-      Alert.alert('Fehler', 'Webseite konnte nicht geöffnet werden.');
-    }
-  };
-
-  const shareNewsItem = async (item) => {
-    try {
-      await Share.share({
-        message: `${item.title}\nDatum: ${item.date} (${item.author})\n\n${item.summary}\n\nMehr Infos: ${item.link}`,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   // --- HAUSAUFGABEN HELFER ---
   const getHomeworkList = () => {
@@ -761,10 +380,6 @@ export default function App() {
       Alert.alert("Fehler", "Stundenplan konnte nicht exportiert werden.");
     }
   };
-
-  const unreadNewsCount = news.filter(item => !readItems.includes(item.id)).length;
-  const unreadEventsCount = events.filter(item => !isExpired(item.endDate) && !readItems.includes(item.id)).length;
-  const totalUnreadCount = unreadNewsCount + unreadEventsCount;
 
   const fetchVPlanData = async () => {
     setVPlanLoading(true);
@@ -843,7 +458,7 @@ export default function App() {
 
   const handleExportJsonFile = async () => {
     try {
-      const exportPayload = { grades, timetable, selectedClass, bookmarks, readItems };
+      const exportPayload = { grades, timetable, selectedClass };
       const jsonString = JSON.stringify(exportPayload, null, 2);
       const fileName = `musterschule_backup_${new Date().toISOString().slice(0, 10)}.json`;
 
@@ -893,8 +508,6 @@ export default function App() {
           if (parsed.grades) setGrades(parsed.grades);
           if (parsed.timetable) setTimetable(parsed.timetable);
           if (parsed.selectedClass) setSelectedClass(parsed.selectedClass);
-          if (parsed.bookmarks) setBookmarks(parsed.bookmarks);
-          if (parsed.readItems) setReadItems(parsed.readItems);
           Alert.alert("Erfolg", "Backup erfolgreich aus JSON-Datei importiert!");
         } else {
           Alert.alert("Fehler", "Die ausgewählte Datei hat ein ungültiges Format.");
@@ -1056,7 +669,10 @@ export default function App() {
     return days > 0 ? days : null;
   };
 
+  // Aktualisierte Schul-Links inklusive der 2 Wunsch-URLs
   const musterLinks = [
+    { title: 'Musterschule Infos', desc: 'Offizielle Infoseite', url: 'https://infos.musterschule.de/', icon: '🏫' },
+    { title: 'Termine & Kalender', desc: 'Schulkalender & Veranstaltungen', url: 'https://infos.musterschule.de/?page_id=394810', icon: '📅' },
     { title: 'Schulportal Hessen', desc: 'Anmeldung, Login', url: 'https://login.schulportal.hessen.de/?url=aHR0cHM6Ly9jb25uZWN0LnNjaHVscG9ydGFsLmhlc3Nlbi5kZS8=&skin=sp&i=5115', icon: '🔐' },
     { title: 'Kapiert.de', desc: 'Das dreistufige Lernportal', url: 'https://www.kapiert.de/', icon: '💡' },
     { title: 'Bärenstark Schule', desc: 'Essensbestellung Mensa', url: 'https://baerenstark-schule.de/mobil/#/login', icon: '🐻' },
@@ -1113,76 +729,13 @@ export default function App() {
     manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
     subjectText: { color: THEME.textMain },
     vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border },
-    newsSubTab: { backgroundColor: THEME.card, borderBottomColor: THEME.border },
-    newsSubTabText: { color: THEME.textSecondary },
-    newsSubTabActiveText: { color: THEME.primary },
-    newsSearchContainer: { backgroundColor: THEME.card },
-    newsSearchInput: { backgroundColor: THEME.input, color: THEME.textMain },
-    newsCard: { backgroundColor: THEME.card },
-    newsReadCard: { backgroundColor: isDark ? '#0F172A' : '#F1F5F9', borderColor: THEME.border, borderWidth: 1 },
-    newsCardTitle: { color: THEME.textMain },
-    newsCardSummary: { color: THEME.textSecondary },
-    newsReadText: { color: THEME.textSecondary },
-    newsFooterBorder: { borderTopColor: THEME.border },
   });
 
   const nextExamsList = getNextExams();
   const todayIdx = getCurrentDayIndex();
 
-  const renderNewsItem = ({ item }) => {
-    const isBookmarked = bookmarks.includes(item.id);
-    const isRead = readItems.includes(item.id);
-
-    return (
-      <TouchableOpacity 
-        activeOpacity={0.9} 
-        onPress={() => openNewsItem(item)}
-        style={[styles.newsCard, dynamicStyles.newsCard, isRead && dynamicStyles.newsReadCard]}
-      >
-        <View style={styles.newsCardHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-            {!isRead && <View style={styles.unreadBadgeIndicator}><Text style={styles.unreadBadgeText}>NEU</Text></View>}
-            <Text style={[styles.newsDateText, isRead && dynamicStyles.newsReadText]}>
-              📅 {item.date} {item.author ? `• ${item.author}` : ''}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id); }}>
-            <Text style={styles.newsBookmarkIcon}>{isBookmarked ? '★' : '☆'}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.newsCardTitle, dynamicStyles.newsCardTitle, isRead && dynamicStyles.newsReadText]}>{item.title}</Text>
-        <Text style={[styles.newsCardSummary, dynamicStyles.newsCardSummary, isRead && dynamicStyles.newsReadText]}>{item.summary}</Text>
-
-        <View style={[styles.newsCardFooter, dynamicStyles.newsFooterBorder]}>
-          <Text style={[styles.newsReadMoreText, isRead && dynamicStyles.newsReadText]}>
-            {isRead ? 'Details ansehen ➔' : 'Öffnen ➔'}
-          </Text>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {isRead && (
-              <TouchableOpacity
-                style={styles.newsShareButton}
-                onPress={(e) => { e.stopPropagation(); toggleReadStatus(item.id); }}
-              >
-                <Text style={{ fontSize: 12, color: THEME.primary, fontWeight: '700' }}>Als ungelesen</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.newsShareButton}
-              onPress={(e) => { e.stopPropagation(); shareNewsItem(item); }}
-            >
-              <Text style={[styles.newsShareText, { color: THEME.textSecondary }]}>Teilen</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // Wieder exakt die 7 perfekten Kern-Tabs, damit nichts gequetscht wirkt
+  // Exakt 6 saubere Kern-Tabs (ohne den entfernten News-Tab)
   const coreTabs = [
-    { key: 'news', label: 'News', icon: '📰', badge: totalUnreadCount },
     { key: 'notes', label: 'Noten', icon: '📝' },
     { key: 'stats', label: 'Statistik', icon: '📊' },
     { key: 'timetable', label: 'Plan', icon: '📅' },
@@ -1195,7 +748,7 @@ export default function App() {
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
-      {/* Perfekte, übersichtliche Hauptnavigation */}
+      {/* 6 perfekt verteilte Tabs in der oberen Leiste */}
       <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
         {coreTabs.map(tab => (
           <TouchableOpacity 
@@ -1205,11 +758,6 @@ export default function App() {
           >
             <View style={styles.iconBadgeContainer}>
               <Text style={styles.navIcon}>{tab.icon}</Text>
-              {tab.badge > 0 && (
-                <View style={styles.mainNavBadge}>
-                  <Text style={styles.mainNavBadgeText}>{tab.badge}</Text>
-                </View>
-              )}
             </View>
             <Text 
               style={[styles.navTabText, dynamicStyles.navTabText, activeTab === tab.key && dynamicStyles.navTabTextActive]} 
@@ -1222,89 +770,6 @@ export default function App() {
           </TouchableOpacity>
         ))}
       </View> 
-
-      {activeTab === 'news' && (
-        <View style={{ flex: 1 }}>
-          <View style={[styles.newsTabContainer, dynamicStyles.newsSubTab]}>
-            <TouchableOpacity
-              style={[styles.newsTab, newsSubTab === 'news' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
-              onPress={() => setNewsSubTab('news')}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'news' && dynamicStyles.newsSubTabActiveText]}>
-                  Nachrichten
-                </Text>
-                {unreadNewsCount > 0 && (
-                  <View style={styles.subTabBadge}>
-                    <Text style={styles.subTabBadgeText}>{unreadNewsCount}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.newsTab, newsSubTab === 'events' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
-              onPress={() => setNewsSubTab('events')}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'events' && dynamicStyles.newsSubTabActiveText]}>
-                  Termine
-                </Text>
-                {unreadEventsCount > 0 && (
-                  <View style={styles.subTabBadge}>
-                    <Text style={styles.subTabBadgeText}>{unreadEventsCount}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.newsTab, newsSubTab === 'saved' && { borderBottomWidth: 3, borderBottomColor: THEME.primary }]}
-              onPress={() => setNewsSubTab('saved')}
-            >
-              <Text style={[styles.newsTabText, dynamicStyles.newsSubTabText, newsSubTab === 'saved' && dynamicStyles.newsSubTabActiveText]}>
-                Favoriten ({bookmarks.length})
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.newsSearchContainer, dynamicStyles.newsSearchContainer]}>
-            <TextInput
-              style={[styles.newsSearchInput, dynamicStyles.newsSearchInput]}
-              placeholder="Suchen nach Titel, Inhalt, Datum…"
-              placeholderTextColor={THEME.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          {newsLoading ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={THEME.primary} />
-              <Text style={[styles.loadingText, { color: THEME.textSecondary }]}>Nachrichten werden geladen…</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredNewsData}
-              keyExtractor={(item) => item.id}
-              renderItem={renderNewsItem}
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl refreshing={newsRefreshing} onRefresh={onNewsRefresh} colors={[THEME.primary]} />
-              }
-              ListEmptyComponent={
-                <View style={styles.centerContainer}>
-                  <Text style={[styles.emptyText, { color: THEME.textSecondary }]}>
-                    {newsSubTab === 'saved'
-                      ? 'Keine gespeicherten Favoriten vorhanden.'
-                      : 'Keine anstehenden Einträge vorhanden.'}
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </View>
-      )}
 
       {activeTab === 'stats' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.statsScrollContent}>
@@ -1452,17 +917,7 @@ export default function App() {
           <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Willkommen in deiner Musterschule-App! Hier erfährst du, wie du alle Funktionen optimal nutzt.</Text>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📰 1. News & Termine</Text>
-            <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
-              • Liest automatisch die neuesten Mitteilungen der Musterschule ein.{'\n'}
-              • Über den Reiter „Termine“ siehst du anstehende Schulereignisse.{'\n'}
-              • Gelesene Beiträge können über den Button wieder als „ungelesen“ markiert werden.{'\n'}
-              • Markiere wichtige Beiträge mit dem Stern-Symbol (★) für deine Favoriten.
-            </Text>
-          </View>
-
-          <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 2. Noten & Verwaltung</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 1. Noten & Verwaltung</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Tippe auf das Plus-Symbol (+), um eine neue Note hinzuzufügen.{'\n'}
               • Wähle aus vordefinierten Fächern oder erstelle ein eigenes Fach mit Wunschfarbe.
@@ -1470,7 +925,7 @@ export default function App() {
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📊 3. Statistik & Trends</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📊 2. Statistik & Trends</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Zeigt deinen Notendurchschnitt sowie den Trendvergleich (3, 6 und 12 Monate).{'\n'}
               • Die Noten-Badges sind kontrastreich umrandet für beste Lesbarkeit.
@@ -1478,7 +933,7 @@ export default function App() {
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📅 4. Stundenplan & Hausaufgaben</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📅 3. Stundenplan & Hausaufgaben</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • <Text style={{ fontWeight: '700' }}>Kurz drücken:</Text> Hausaufgaben und Prüfungsdaten eintragen.{'\n'}
               • <Text style={{ fontWeight: '700' }}>Lang drücken:</Text> Das Fach für diesen Raster-Slot auswählen.{'\n'}
@@ -1487,14 +942,15 @@ export default function App() {
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>🏫 5. Muster & Vertretungsplan</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>🏫 4. Muster & Vertretungsplan</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
-              • Gib oben deine Klasse (z.B. <Text style={{ fontWeight: '700' }}>5b</Text>) ein, um den Vertretungsplan abzurufen.
+              • Gib oben deine Klasse (z.B. <Text style={{ fontWeight: '700' }}>5b</Text>) ein, um den Vertretungsplan abzurufen.{'\n'}
+              • Nutze die direkten Links zu den Musterschule-Infoseiten.
             </Text>
           </View>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 20 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 6. Backup & Design</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>💾 5. Backup & Design</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Wechsle zwischen Light- und Dark-Mode und sichere deine Daten als JSON-Datei oder teile deinen Stundenplan als Text.
             </Text>
@@ -1540,7 +996,6 @@ export default function App() {
 
       {activeTab === 'timetable' && (
         <View style={styles.ttContainer}>
-          {/* Header-Aktion für Hausaufgaben & Export */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
             <TouchableOpacity 
               style={{ flex: 1, backgroundColor: THEME.primary, paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
@@ -1893,7 +1348,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     flexDirection: 'column',
     flexShrink: 0,
-    width: `${100 / 7}%`
+    width: `${100 / 6}%`
   },
   navTabActive: { backgroundColor: 'rgba(255,255,255,0.15)' },
   iconBadgeContainer: {
@@ -1902,23 +1357,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   navIcon: { fontSize: 18, marginBottom: 4, textAlign: 'center' },
-  mainNavBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -10,
-    backgroundColor: '#FF1744',
-    borderRadius: 10,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-  },
-  mainNavBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
   navTabText: { fontSize: 10, fontWeight: '700', textAlign: 'center', width: '100%' },
   subHeader: { marginBottom: 25, fontSize: 14 },
   linkCard: { borderRadius: 18, padding: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 15, elevation: 2 },
@@ -2043,27 +1481,5 @@ const styles = StyleSheet.create({
   gradeInputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
   vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
-  newsTabContainer: { flexDirection: 'row', borderBottomWidth: 1 },
-  newsTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  newsTabText: { fontSize: 13, fontWeight: '600' },
-  subTabBadge: { backgroundColor: '#FF1744', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 },
-  subTabBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
-  unreadBadgeIndicator: { backgroundColor: '#FF1744', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2, marginRight: 6 },
-  unreadBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
-  newsSearchContainer: { padding: 12 },
-  newsSearchInput: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, fontSize: 14 },
-  newsCard: { borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  newsCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  newsDateText: { fontSize: 12, color: '#64748b', flex: 1 },
-  newsBookmarkIcon: { fontSize: 20, color: '#eab308' },
-  newsCardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
-  newsCardSummary: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  newsCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 10 },
-  newsReadMoreText: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
-  newsShareButton: { padding: 4, paddingHorizontal: 8 },
-  newsShareText: { fontSize: 13 },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 40 },
-  loadingText: { marginTop: 10 },
-  emptyText: { fontSize: 15, textAlign: 'center' },
   checkboxContainer: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
 });

@@ -10,11 +10,11 @@ import * as DocumentPicker from 'expo-document-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Speicher-Schlüssel auf v25 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v25';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v25';
-const READ_KEY = '@musterschule_read_articles_v25';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v25';
+// Speicher-Schlüssel auf v26 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v26';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v26';
+const READ_KEY = '@musterschule_read_articles_v26';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v26';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -164,8 +164,8 @@ export default function App() {
 
   THEME = isDark ? THEMES.dark : THEMES.light;
 
-  // Start-Tab direkt auf 'notes' (Noten) gesetzt, da News entfernt wurden
-  const [activeTab, setActiveTab] = useState('notes'); 
+  // Start-Tab nun standardmäßig auf 'pattern' (Muster) gesetzt
+  const [activeTab, setActiveTab] = useState('pattern'); 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathe');
@@ -669,7 +669,6 @@ export default function App() {
     return days > 0 ? days : null;
   };
 
-  // Aktualisierte Schul-Links inklusive der 2 Wunsch-URLs
   const musterLinks = [
     { title: 'Musterschule Infos', desc: 'Offizielle Infoseite', url: 'https://infos.musterschule.de/', icon: '🏫' },
     { title: 'Termine & Kalender', desc: 'Schulkalender & Veranstaltungen', url: 'https://infos.musterschule.de/?page_id=394810', icon: '📅' },
@@ -734,12 +733,11 @@ export default function App() {
   const nextExamsList = getNextExams();
   const todayIdx = getCurrentDayIndex();
 
-  // Exakt 6 saubere Kern-Tabs (ohne den entfernten News-Tab)
   const coreTabs = [
+    { key: 'pattern', label: 'Muster', icon: '🏫' },
     { key: 'notes', label: 'Noten', icon: '📝' },
     { key: 'stats', label: 'Statistik', icon: '📊' },
     { key: 'timetable', label: 'Plan', icon: '📅' },
-    { key: 'pattern', label: 'Muster', icon: '🏫' },
     { key: 'manual', label: 'Handbuch', icon: '📖' },
     { key: 'backup', label: 'Backup', icon: '💾' },
   ];
@@ -748,7 +746,6 @@ export default function App() {
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
-      {/* 6 perfekt verteilte Tabs in der oberen Leiste */}
       <View style={[styles.navHeaderFixed, dynamicStyles.navHeaderFixed]}>
         {coreTabs.map(tab => (
           <TouchableOpacity 

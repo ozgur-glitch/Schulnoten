@@ -10,11 +10,11 @@ import * as DocumentPicker from 'expo-document-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Speicher-Schlüssel auf v26 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v26';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v26';
-const READ_KEY = '@musterschule_read_articles_v26';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v26';
+// Speicher-Schlüssel auf v27 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v27';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v27';
+const READ_KEY = '@musterschule_read_articles_v27';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v27';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -164,7 +164,6 @@ export default function App() {
 
   THEME = isDark ? THEMES.dark : THEMES.light;
 
-  // Start-Tab nun standardmäßig auf 'pattern' (Muster) gesetzt
   const [activeTab, setActiveTab] = useState('pattern'); 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -173,6 +172,9 @@ export default function App() {
   const [customSubject, setCustomSubject] = useState('');
   const [customSubjectColor, setCustomSubjectColor] = useState(COLOR_PALETTE[0]);
   const [dateInput, setDateInput] = useState(''); 
+
+  // Suchfeld für Noten
+  const [gradeSearchQuery, setGradeSearchQuery] = useState('');
 
   const [hwModalVisible, setHwModalVisible] = useState(false);
   const [subjectModalVisible, setSubjectModalVisible] = useState(false);
@@ -728,6 +730,7 @@ export default function App() {
     manualInputCompact: { backgroundColor: THEME.card, color: THEME.textMain },
     subjectText: { color: THEME.textMain },
     vPlanCard: { backgroundColor: THEME.card, borderColor: THEME.border },
+    gradeSearchInput: { backgroundColor: THEME.card, color: THEME.textMain, borderColor: THEME.border, borderWidth: 1 }
   });
 
   const nextExamsList = getNextExams();
@@ -741,6 +744,11 @@ export default function App() {
     { key: 'manual', label: 'Handbuch', icon: '📖' },
     { key: 'backup', label: 'Backup', icon: '💾' },
   ];
+
+  // Gefilterte Noten für die Noten-Suche
+  const filteredGrades = [...grades]
+    .sort((a, b) => parseDate(b.date) - parseDate(a.date))
+    .filter(item => item.subject.toLowerCase().includes(gradeSearchQuery.toLowerCase()));
 
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
@@ -914,9 +922,10 @@ export default function App() {
           <Text style={[styles.subHeader, dynamicStyles.subHeader]}>Willkommen in deiner Musterschule-App! Hier erfährst du, wie du alle Funktionen optimal nutzt.</Text>
 
           <View style={[styles.linkCard, dynamicStyles.linkCard, { flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }]}>
-            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 1. Noten & Verwaltung</Text>
+            <Text style={[styles.linkTitle, dynamicStyles.linkTitle, { color: THEME.primary }]}>📝 1. Noten & Suche</Text>
             <Text style={[styles.linkDesc, dynamicStyles.linkDesc, { lineHeight: 20, color: THEME.textMain }]}>
               • Tippe auf das Plus-Symbol (+), um eine neue Note hinzuzufügen.{'\n'}
+              • Nutze das <Text style={{ fontWeight: '700' }}>Suchfeld im Noten-Tab</Text>, um gezielt nach einzelnen Fächern zu filtern.{'\n'}
               • Wähle aus vordefinierten Fächern oder erstelle ein eigenes Fach mit Wunschfarbe.
             </Text>
           </View>
@@ -1113,16 +1122,40 @@ export default function App() {
             <Text style={[styles.listTitle, dynamicStyles.listTitle]}>Deine Noten</Text>
             <TouchableOpacity style={[styles.addButton, {backgroundColor: THEME.primary}]} onPress={() => setModalVisible(true)}><Text style={styles.addButtonText}>+</Text></TouchableOpacity>
           </View>
-          <FlatList data={[...grades].sort((a,b) => parseDate(b.date) - parseDate(a.date))} keyExtractor={(item) => item.id} contentContainerStyle={styles.listContent} renderItem={({ item }) => (
-            <View style={[styles.gradeCard, dynamicStyles.gradeCard]}>
-              <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
-              <TouchableOpacity style={{ flex: 1 }} onPress={() => { setEditingId(item.id); setGradeInput(item.displayGrade); setDateInput(item.date); setModalVisible(true); }}>
-                <Text style={[styles.subjectText, dynamicStyles.subjectText]}>{item.subject}</Text>
-                <Text style={[styles.dateText, dynamicStyles.dateText]}>{item.date}</Text> 
-              </TouchableOpacity>
-              <View style={[styles.gradeContainer, dynamicStyles.gradeContainer]}><Text style={[styles.gradeValueText, dynamicStyles.gradeValueText]}>{item.displayGrade}</Text></View>
-            </View>
-          )} />
+
+          {/* Suchfeld für Fächer */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+            <TextInput 
+              style={[styles.gradeSearchInput, dynamicStyles.gradeSearchInput]}
+              placeholder="🔍 Nach Fach suchen (z.B. Mathe)…"
+              placeholderTextColor={THEME.textSecondary}
+              value={gradeSearchQuery}
+              onChangeText={setGradeSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <FlatList 
+            data={filteredGrades} 
+            keyExtractor={(item) => item.id} 
+            contentContainerStyle={styles.listContent} 
+            ListEmptyComponent={
+              <Text style={[styles.subHeader, dynamicStyles.subHeader, { textAlign: 'center', fontStyle: 'italic', marginTop: 20 }]}>
+                Keine Noten für dieses Fach gefunden.
+              </Text>
+            }
+            renderItem={({ item }) => (
+              <View style={[styles.gradeCard, dynamicStyles.gradeCard]}>
+                <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
+                <TouchableOpacity style={{ flex: 1 }} onPress={() => { setEditingId(item.id); setGradeInput(item.displayGrade); setDateInput(item.date); setModalVisible(true); }}>
+                  <Text style={[styles.subjectText, dynamicStyles.subjectText]}>{item.subject}</Text>
+                  <Text style={[styles.dateText, dynamicStyles.dateText]}>{item.date}</Text> 
+                </TouchableOpacity>
+                <View style={[styles.gradeContainer, dynamicStyles.gradeContainer]}><Text style={[styles.gradeValueText, dynamicStyles.gradeValueText]}>{item.displayGrade}</Text></View>
+              </View>
+            )} 
+          />
         </View>
       )}
 
@@ -1479,4 +1512,5 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 5 },
   vPlanCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
   checkboxContainer: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  gradeSearchInput: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, fontSize: 14 }
 });

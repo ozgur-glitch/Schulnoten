@@ -10,11 +10,11 @@ import * as DocumentPicker from 'expo-document-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Speicher-Schlüssel auf v28 erhöht
-const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v28';
-const BOOKMARKS_KEY = '@musterschule_bookmarks_v28';
-const READ_KEY = '@musterschule_read_articles_v28';
-const LAST_FETCH_KEY = '@musterschule_last_fetch_v28';
+// Speicher-Schlüssel auf v29 erhöht
+const STORAGE_EVENTS_KEY = '@musterschule_events_cache_v29';
+const BOOKMARKS_KEY = '@musterschule_bookmarks_v29';
+const READ_KEY = '@musterschule_read_articles_v29';
+const LAST_FETCH_KEY = '@musterschule_last_fetch_v29';
 
 const PREDEFINED_SUBJECTS = {
   'Englisch': '#5C6BC0', 
@@ -1124,8 +1124,8 @@ export default function App() {
             <TouchableOpacity style={[styles.addButton, {backgroundColor: THEME.primary}]} onPress={() => setModalVisible(true)}><Text style={styles.addButtonText}>+</Text></TouchableOpacity>
           </View>
 
-          {/* Suchfeld für Fächer mit schnellem Lösch-Button (✕) */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+          {/* Suchfeld für Fächer mit schnellem Lösch-Button (✕) und Abstand nach oben */}
+          <View style={{ paddingHorizontal: 16, marginTop: 8, marginBottom: 12 }}>
             <View style={[styles.searchWrapper, dynamicStyles.searchWrapper]}>
               <TextInput 
                 style={[styles.gradeSearchInput, dynamicStyles.gradeSearchInput]}
